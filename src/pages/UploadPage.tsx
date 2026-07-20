@@ -18,8 +18,10 @@ import {
 import { cameraOutline, checkmarkCircle } from 'ionicons/icons';
 import { extractDocument, type ExtractedFinancialDocument } from '@/lib/documentUpload';
 import { saveTransaction, type SaveTransactionInput } from '@/lib/saveTransaction';
+import { addDebtPayment } from '@/lib/addDebtPayment';
 import { CATEGORY_OPTIONS } from '@/lib/categories';
 import { formatThaiDateTimeLabel } from '@/lib/date';
+import { listDebts, type Debt } from '@/lib/debts';
 import PageHeader from '@/components/PageHeader';
 
 const DOCUMENT_TYPE_LABEL: Record<string, string> = {
@@ -32,7 +34,7 @@ const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   other: 'เอกสารอื่น ๆ',
 };
 
-type SavableType = 'expense' | 'income' | 'transfer' | 'refund';
+type SavableType = 'expense' | 'income' | 'transfer' | 'refund' | 'debt_payment';
 
 interface DraftForm {
   type: SavableType;
@@ -40,6 +42,7 @@ interface DraftForm {
   merchant: string;
   datetimeLocal: string;
   categoryId: string;
+  debtId: string;
 }
 
 function isoToDatetimeLocal(iso?: string): string {
@@ -56,13 +59,15 @@ function datetimeLocalToIso(value: string): string {
 
 function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
   const type = result.transaction?.type;
-  const savableType: SavableType = type === 'income' || type === 'transfer' || type === 'refund' ? type : 'expense';
+  const savableType: SavableType =
+    type === 'income' || type === 'transfer' || type === 'refund' || type === 'debt_payment' ? type : 'expense';
   return {
     type: savableType,
     amount: result.transaction?.amount !== undefined ? String(result.transaction.amount) : '',
     merchant: result.transaction?.merchant ?? '',
     datetimeLocal: isoToDatetimeLocal(result.transaction?.occurredAt),
     categoryId: result.transaction?.categoryId ?? '',
+    debtId: '',
   };
 }
 
@@ -72,6 +77,11 @@ const UploadPage: React.FC = () => {
   const [error, setError] = useState('');
   const [unclearFields, setUnclearFields] = useState<string[]>([]);
   const [draft, setDraft] = useState<DraftForm | null>(null);
+  const [debts, setDebts] = useState<Debt[]>([]);
+
+  useIonViewWillEnter(() => {
+    void listDebts().then(setDebts).catch(() => setDebts([]));
+  });
 
   const reset = () => {
     setStep('pick');
@@ -118,18 +128,26 @@ const UploadPage: React.FC = () => {
       setError('กรุณาระบุวันที่ทำรายการ');
       return;
     }
+    if (draft.type === 'debt_payment' && !draft.debtId) {
+      setError('กรุณาเลือกหนี้ที่ต้องการจ่าย');
+      return;
+    }
     setError('');
     setStep('saving');
     try {
-      const category = CATEGORY_OPTIONS.find((option) => option.id === draft.categoryId);
-      const input: SaveTransactionInput = {
-        type: draft.type,
-        amount: amountNumber,
-        occurredAt,
-        merchant: draft.merchant || undefined,
-        categoryLabel: category?.label,
-      };
-      await saveTransaction(input);
+      if (draft.type === 'debt_payment') {
+        await addDebtPayment({ debtId: draft.debtId, amount: amountNumber, occurredAt });
+      } else {
+        const category = CATEGORY_OPTIONS.find((option) => option.id === draft.categoryId);
+        const input: SaveTransactionInput = {
+          type: draft.type,
+          amount: amountNumber,
+          occurredAt,
+          merchant: draft.merchant || undefined,
+          categoryLabel: category?.label,
+        };
+        await saveTransaction(input);
+      }
       setStep('saved');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'บันทึกรายการไม่สำเร็จ');
@@ -185,11 +203,12 @@ const UploadPage: React.FC = () => {
             <div className="tl-card">
               <IonSegment
                 value={draft.type}
-                onIonChange={(e) => setDraft({ ...draft, type: e.detail.value as SavableType, categoryId: '' })}
+                onIonChange={(e) => setDraft({ ...draft, type: e.detail.value as SavableType, categoryId: '', debtId: '' })}
               >
                 <IonSegmentButton value="expense"><IonText>รายจ่าย</IonText></IonSegmentButton>
                 <IonSegmentButton value="income"><IonText>รายรับ</IonText></IonSegmentButton>
                 <IonSegmentButton value="transfer"><IonText>โอนเงิน</IonText></IonSegmentButton>
+                <IonSegmentButton value="debt_payment"><IonText>จ่ายหนี้</IonText></IonSegmentButton>
               </IonSegment>
 
               <div style={{ marginTop: 18 }}>
@@ -203,14 +222,37 @@ const UploadPage: React.FC = () => {
                 />
               </div>
 
-              <div style={{ marginTop: 14 }}>
-                <FieldLabel>ร้าน/บุคคล</FieldLabel>
-                <IonInput
-                  fill="outline"
-                  value={draft.merchant}
-                  onIonInput={(e) => setDraft({ ...draft, merchant: e.detail.value ?? '' })}
-                />
-              </div>
+              {draft.type === 'debt_payment' ? (
+                <div style={{ marginTop: 14 }}>
+                  <FieldLabel>หนี้ที่จะจ่าย</FieldLabel>
+                  {debts.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--tl-text-secondary)' }}>
+                      ยังไม่มีรายการหนี้ในระบบ — เพิ่มหนี้ในแท็บ &quot;หนี้สิน&quot; ก่อน
+                    </p>
+                  ) : (
+                    <IonSelect
+                      fill="outline"
+                      interface="action-sheet"
+                      placeholder="เลือกหนี้"
+                      value={draft.debtId}
+                      onIonChange={(e) => setDraft({ ...draft, debtId: e.detail.value })}
+                    >
+                      {debts.map((debt) => (
+                        <IonSelectOption key={debt.id} value={debt.id}>{debt.name}</IonSelectOption>
+                      ))}
+                    </IonSelect>
+                  )}
+                </div>
+              ) : (
+                <div style={{ marginTop: 14 }}>
+                  <FieldLabel>ร้าน/บุคคล</FieldLabel>
+                  <IonInput
+                    fill="outline"
+                    value={draft.merchant}
+                    onIonInput={(e) => setDraft({ ...draft, merchant: e.detail.value ?? '' })}
+                  />
+                </div>
+              )}
 
               <div style={{ marginTop: 14 }}>
                 <FieldLabel>วันที่และเวลา</FieldLabel>
@@ -245,7 +287,7 @@ const UploadPage: React.FC = () => {
                 })()}
               </div>
 
-              {draft.type !== 'transfer' && (
+              {draft.type !== 'transfer' && draft.type !== 'debt_payment' && (
                 <div style={{ marginTop: 14 }}>
                   <FieldLabel>หมวดหมู่</FieldLabel>
                   <IonSelect
