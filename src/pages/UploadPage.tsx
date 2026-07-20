@@ -13,6 +13,7 @@ import {
   IonSpinner,
   IonText,
   IonToolbar,
+  useIonViewWillEnter,
 } from '@ionic/react';
 import { cameraOutline, checkmarkCircle } from 'ionicons/icons';
 import { extractDocument, type ExtractedFinancialDocument } from '@/lib/documentUpload';
@@ -79,6 +80,16 @@ const UploadPage: React.FC = () => {
     setUnclearFields([]);
     setDraft(null);
   };
+
+  // Ionic keeps each tab's page mounted when you switch tabs (so scroll
+  // position/state survives a quick tab-away-and-back) -- without this,
+  // leaving the "saved" confirmation up and coming back to this tab later
+  // would still show last scan's success screen instead of a fresh picker.
+  // Only the "saved" dead-end resets; an in-progress review is left alone
+  // so briefly switching tabs mid-edit doesn't discard the user's draft.
+  useIonViewWillEnter(() => {
+    if (step === 'saved') reset();
+  }, [step]);
 
   const handleFile = async (file: File) => {
     setError('');
