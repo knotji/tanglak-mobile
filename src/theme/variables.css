@@ -15,6 +15,7 @@
   --background: rgba(250, 252, 251, .96);
   --border: 1px solid rgba(190, 210, 200, .35);
   padding: 5px max(18px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 
@@ -22,6 +23,18 @@
 .main-tab-bar ion-icon { width: 20px; height: 20px; }
 
 * { box-sizing: border-box; }
+
+.upload-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 32px 16px;
+  border: 1px dashed rgba(31, 138, 92, 0.4);
+  border-radius: 12px;
+  color: var(--ion-color-primary);
+  text-align: center;
+}
 
 ion-header ion-toolbar > ion-title {
   position: absolute;
