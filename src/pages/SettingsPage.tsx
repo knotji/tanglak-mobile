@@ -1,18 +1,18 @@
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonPage, IonToolbar } from '@ionic/react';
+import PageHeader from '@/components/PageHeader';
 import { supabase } from '@/lib/supabaseClient';
 
 const SettingsPage: React.FC = () => (
   <IonPage>
-    <IonHeader>
+    <IonHeader className="ion-no-border">
       <IonToolbar>
         <IonButtons slot="start">
-          <IonBackButton defaultHref="/tabs/more" />
+          <IonBackButton defaultHref="/tabs/more" text="" />
         </IonButtons>
-        <IonTitle>ตั้งค่า</IonTitle>
       </IonToolbar>
     </IonHeader>
-    <IonContent className="ion-padding">
-      <p>บัญชี, การเชื่อมต่อ (จะพอร์ตมาจาก tanglak/src/app/settings)</p>
+    <IonContent className="ion-padding" fullscreen>
+      <PageHeader title="ตั้งค่า" subtitle="บัญชีและการเชื่อมต่อ" />
       <IonButton expand="block" color="danger" fill="outline" onClick={() => supabase.auth.signOut()}>
         ออกจากระบบ
       </IonButton>

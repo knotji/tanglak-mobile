@@ -1,17 +1,20 @@
-import { IonBackButton, IonButtons, IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import { IonBackButton, IonButtons, IonContent, IonHeader, IonPage, IonToolbar } from '@ionic/react';
+import PageHeader from '@/components/PageHeader';
 
 const OverviewPage: React.FC = () => (
   <IonPage>
-    <IonHeader>
+    <IonHeader className="ion-no-border">
       <IonToolbar>
         <IonButtons slot="start">
-          <IonBackButton defaultHref="/tabs/more" />
+          <IonBackButton defaultHref="/tabs/more" text="" />
         </IonButtons>
-        <IonTitle>ภาพรวม</IonTitle>
       </IonToolbar>
     </IonHeader>
-    <IonContent className="ion-padding">
-      <p>ภาพรวมการเงิน (จะพอร์ตมาจาก tanglak/src/app/overview)</p>
+    <IonContent className="ion-padding" fullscreen>
+      <PageHeader title="ภาพรวม" subtitle="ภาพรวมการเงินของคุณ" />
+      <div className="tl-card tl-empty">
+        <p>ยังไม่มีข้อมูล</p>
+      </div>
     </IonContent>
   </IonPage>
 );

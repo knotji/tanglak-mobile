@@ -11,6 +11,9 @@ export default defineConfig({
     react(),
     legacy()
   ],
+  server: {
+    port: 5190,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

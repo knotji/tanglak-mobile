@@ -1,14 +1,14 @@
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import { IonContent, IonHeader, IonPage, IonToolbar } from '@ionic/react';
+import PageHeader from '@/components/PageHeader';
 
 const TodayPage: React.FC = () => (
   <IonPage>
-    <IonHeader>
-      <IonToolbar>
-        <IonTitle>วันนี้</IonTitle>
-      </IonToolbar>
-    </IonHeader>
-    <IonContent className="ion-padding">
-      <p>สรุปยอดใช้จ่ายวันนี้และรายการล่าสุด (จะพอร์ตมาจาก tanglak/src/app/today)</p>
+    <IonHeader className="ion-no-border"><IonToolbar /></IonHeader>
+    <IonContent className="ion-padding" fullscreen>
+      <PageHeader title="วันนี้" subtitle="สรุปยอดใช้จ่ายวันนี้และรายการล่าสุด" />
+      <div className="tl-card tl-empty">
+        <p>ยังไม่มีข้อมูล — เริ่มจากสแกนสลิปแรกของคุณ</p>
+      </div>
     </IonContent>
   </IonPage>
 );

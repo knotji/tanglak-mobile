@@ -1,21 +1,24 @@
 import { useState } from 'react';
 import {
-  IonBadge,
+  IonButton,
   IonContent,
   IonHeader,
   IonIcon,
-  IonItem,
-  IonLabel,
-  IonList,
+  IonInput,
   IonPage,
+  IonSegment,
+  IonSegmentButton,
+  IonSelect,
+  IonSelectOption,
   IonSpinner,
   IonText,
-  IonTitle,
   IonToolbar,
 } from '@ionic/react';
-import { cameraOutline } from 'ionicons/icons';
+import { cameraOutline, checkmarkCircle } from 'ionicons/icons';
 import { extractDocument, type ExtractedFinancialDocument } from '@/lib/documentUpload';
-import { categoryLabel } from '@/lib/categories';
+import { saveTransaction, type SaveTransactionInput } from '@/lib/saveTransaction';
+import { CATEGORY_OPTIONS } from '@/lib/categories';
+import PageHeader from '@/components/PageHeader';
 
 const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   salary_slip: 'สลิปเงินเดือน',
@@ -27,117 +30,246 @@ const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   other: 'เอกสารอื่น ๆ',
 };
 
+type SavableType = 'expense' | 'income' | 'transfer' | 'refund';
+
+interface DraftForm {
+  type: SavableType;
+  amount: string;
+  merchant: string;
+  datetimeLocal: string;
+  categoryId: string;
+}
+
+function isoToDatetimeLocal(iso?: string): string {
+  if (!iso) return '';
+  // Bangkok is a fixed UTC+7 offset app-wide -- take the printed wall-clock
+  // digits as-is rather than converting through the device's own timezone.
+  const match = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+  return match ? `${match[1]}T${match[2]}` : '';
+}
+
+function datetimeLocalToIso(value: string): string {
+  return value ? `${value}:00+07:00` : '';
+}
+
+function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
+  const type = result.transaction?.type;
+  const savableType: SavableType = type === 'income' || type === 'transfer' || type === 'refund' ? type : 'expense';
+  return {
+    type: savableType,
+    amount: result.transaction?.amount !== undefined ? String(result.transaction.amount) : '',
+    merchant: result.transaction?.merchant ?? '',
+    datetimeLocal: isoToDatetimeLocal(result.transaction?.occurredAt),
+    categoryId: result.transaction?.categoryId ?? '',
+  };
+}
+
 const UploadPage: React.FC = () => {
+  const [step, setStep] = useState<'pick' | 'extracting' | 'review' | 'saving' | 'saved'>('pick');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<ExtractedFinancialDocument | null>(null);
+  const [unclearFields, setUnclearFields] = useState<string[]>([]);
+  const [draft, setDraft] = useState<DraftForm | null>(null);
+
+  const reset = () => {
+    setStep('pick');
+    setPreviewUrl(null);
+    setError('');
+    setUnclearFields([]);
+    setDraft(null);
+  };
 
   const handleFile = async (file: File) => {
     setError('');
-    setResult(null);
     setPreviewUrl(URL.createObjectURL(file));
-    setLoading(true);
+    setStep('extracting');
     try {
-      setResult(await extractDocument(file));
+      const result = await extractDocument(file);
+      setDraft(draftFromExtraction(result));
+      setUnclearFields(result.unclearFields);
+      setStep('review');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'อ่านสลิปไม่สำเร็จ');
-    } finally {
-      setLoading(false);
+      setStep('pick');
     }
   };
 
+  const handleSave = async () => {
+    if (!draft) return;
+    const amountNumber = Number(draft.amount);
+    if (!draft.amount || !Number.isFinite(amountNumber) || amountNumber <= 0) {
+      setError('กรุณาระบุจำนวนเงินให้ถูกต้อง');
+      return;
+    }
+    const occurredAt = datetimeLocalToIso(draft.datetimeLocal);
+    if (!occurredAt) {
+      setError('กรุณาระบุวันที่ทำรายการ');
+      return;
+    }
+    setError('');
+    setStep('saving');
+    try {
+      const category = CATEGORY_OPTIONS.find((option) => option.id === draft.categoryId);
+      const input: SaveTransactionInput = {
+        type: draft.type,
+        amount: amountNumber,
+        occurredAt,
+        merchant: draft.merchant || undefined,
+        categoryLabel: category?.label,
+      };
+      await saveTransaction(input);
+      setStep('saved');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'บันทึกรายการไม่สำเร็จ');
+      setStep('review');
+    }
+  };
+
+  const categoryOptionsForType = CATEGORY_OPTIONS.filter((option) =>
+    draft?.type === 'income' ? option.kind === 'income' : option.kind === 'expense',
+  );
+
   return (
     <IonPage>
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>สแกนสลิป</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-      <IonContent className="ion-padding">
-        <label className="upload-picker">
-          <IonIcon icon={cameraOutline} style={{ fontSize: 32 }} />
-          <p>{previewUrl ? 'ถ่าย/เลือกรูปใหม่' : 'ถ่ายรูปหรือเลือกสลิป'}</p>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            style={{ display: 'none' }}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = '';
-              if (file) void handleFile(file);
-            }}
-          />
-        </label>
+      <IonHeader className="ion-no-border"><IonToolbar /></IonHeader>
+      <IonContent className="ion-padding" fullscreen>
+        <PageHeader title="สแกนสลิป" subtitle="ถ่ายรูปสลิปให้ AI อ่านข้อมูลให้" />
 
-        {previewUrl && (
-          <img src={previewUrl} alt="" style={{ width: '100%', borderRadius: 12, marginTop: 16 }} />
+        {step === 'pick' && (
+          <>
+            <label className="upload-picker">
+              <IonIcon icon={cameraOutline} style={{ fontSize: 32 }} />
+              <p>ถ่ายรูปหรือเลือกสลิป</p>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  if (file) void handleFile(file);
+                }}
+              />
+            </label>
+            {error && (
+              <IonText color="danger">
+                <p className="ion-margin-top">{error}</p>
+              </IonText>
+            )}
+          </>
         )}
 
-        {loading && (
-          <div className="ion-text-center ion-margin-top">
+        {step === 'extracting' && (
+          <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
+            {previewUrl && <img src={previewUrl} alt="" style={{ width: '100%', borderRadius: 12, marginBottom: 16 }} />}
             <IonSpinner />
-            <p>กำลังอ่านข้อมูลจากสลิป…</p>
+            <p style={{ marginTop: 8, color: 'var(--tl-text-secondary)' }}>กำลังอ่านข้อมูลจากสลิป…</p>
           </div>
         )}
 
-        {error && (
-          <IonText color="danger">
-            <p className="ion-margin-top">{error}</p>
-          </IonText>
+        {(step === 'review' || step === 'saving') && draft && (
+          <>
+            <div className="tl-card">
+              <IonSegment
+                value={draft.type}
+                onIonChange={(e) => setDraft({ ...draft, type: e.detail.value as SavableType, categoryId: '' })}
+              >
+                <IonSegmentButton value="expense"><IonText>รายจ่าย</IonText></IonSegmentButton>
+                <IonSegmentButton value="income"><IonText>รายรับ</IonText></IonSegmentButton>
+                <IonSegmentButton value="transfer"><IonText>โอนเงิน</IonText></IonSegmentButton>
+              </IonSegment>
+
+              <div style={{ marginTop: 18 }}>
+                <FieldLabel>จำนวนเงิน (บาท)</FieldLabel>
+                <IonInput
+                  fill="outline"
+                  type="number"
+                  inputmode="decimal"
+                  value={draft.amount}
+                  onIonInput={(e) => setDraft({ ...draft, amount: e.detail.value ?? '' })}
+                />
+              </div>
+
+              <div style={{ marginTop: 14 }}>
+                <FieldLabel>ร้าน/บุคคล</FieldLabel>
+                <IonInput
+                  fill="outline"
+                  value={draft.merchant}
+                  onIonInput={(e) => setDraft({ ...draft, merchant: e.detail.value ?? '' })}
+                />
+              </div>
+
+              <div style={{ marginTop: 14 }}>
+                <FieldLabel>วันที่และเวลา</FieldLabel>
+                <input
+                  type="datetime-local"
+                  className="tl-datetime-input"
+                  value={draft.datetimeLocal}
+                  onChange={(e) => setDraft({ ...draft, datetimeLocal: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--tl-border)',
+                    fontFamily: 'inherit',
+                    fontSize: 16,
+                  }}
+                />
+                {unclearFields.includes('transaction.occurredAt') && (
+                  <IonText color="warning"><p style={{ fontSize: 12, marginTop: 4 }}>AI อ่านวันที่ไม่ชัดเจน กรุณาตรวจสอบ</p></IonText>
+                )}
+              </div>
+
+              {draft.type !== 'transfer' && (
+                <div style={{ marginTop: 14 }}>
+                  <FieldLabel>หมวดหมู่</FieldLabel>
+                  <IonSelect
+                    fill="outline"
+                    interface="action-sheet"
+                    placeholder="เลือกหมวดหมู่"
+                    value={draft.categoryId}
+                    onIonChange={(e) => setDraft({ ...draft, categoryId: e.detail.value })}
+                  >
+                    {categoryOptionsForType.map((option) => (
+                      <IonSelectOption key={option.id} value={option.id}>{option.label}</IonSelectOption>
+                    ))}
+                  </IonSelect>
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <IonText color="danger">
+                <p className="ion-margin-top">{error}</p>
+              </IonText>
+            )}
+
+            <IonButton expand="block" className="ion-margin-top" disabled={step === 'saving'} onClick={handleSave}>
+              {step === 'saving' ? <IonSpinner name="dots" /> : 'บันทึกรายการ'}
+            </IonButton>
+            <IonButton expand="block" fill="clear" disabled={step === 'saving'} onClick={reset}>
+              ยกเลิก
+            </IonButton>
+          </>
         )}
 
-        {result && (
-          <IonList inset className="ion-margin-top">
-            <IonItem>
-              <IonLabel>ประเภทเอกสาร</IonLabel>
-              <IonBadge slot="end">{DOCUMENT_TYPE_LABEL[result.documentType] ?? result.documentType}</IonBadge>
-            </IonItem>
-            {result.transaction?.amount !== undefined && (
-              <IonItem>
-                <IonLabel>จำนวนเงิน</IonLabel>
-                <IonText slot="end">{result.transaction.amount.toLocaleString('th-TH')} บาท</IonText>
-              </IonItem>
-            )}
-            {result.transaction?.merchant && (
-              <IonItem>
-                <IonLabel>ร้าน/บุคคล</IonLabel>
-                <IonText slot="end">{result.transaction.merchant}</IonText>
-              </IonItem>
-            )}
-            {result.transaction?.occurredAt && (
-              <IonItem>
-                <IonLabel>วันที่</IonLabel>
-                <IonText slot="end">{new Date(result.transaction.occurredAt).toLocaleString('th-TH')}</IonText>
-              </IonItem>
-            )}
-            {result.transaction?.categoryId && (
-              <IonItem>
-                <IonLabel>หมวดหมู่</IonLabel>
-                <IonText slot="end">{categoryLabel(result.transaction.categoryId)}</IonText>
-              </IonItem>
-            )}
-            {result.unclearFields.length > 0 && (
-              <IonItem>
-                <IonLabel className="ion-text-wrap" color="warning">
-                  ต้องตรวจสอบ: {result.unclearFields.join(', ')}
-                </IonLabel>
-              </IonItem>
-            )}
-          </IonList>
-        )}
-
-        {result && (
-          <IonText color="medium">
-            <p className="ion-padding-start ion-padding-end">
-              ยังบันทึกเป็นรายการจริงไม่ได้ในตอนนี้ — ขั้นตอนถัดไปคือหน้ายืนยัน/บันทึกรายการ
-            </p>
-          </IonText>
+        {step === 'saved' && (
+          <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
+            <IonIcon icon={checkmarkCircle} color="success" style={{ fontSize: 48 }} />
+            <p style={{ fontWeight: 700, marginTop: 12 }}>บันทึกรายการแล้ว</p>
+            <IonButton expand="block" className="ion-margin-top" onClick={reset}>
+              สแกนสลิปอีกใบ
+            </IonButton>
+          </div>
         )}
       </IonContent>
     </IonPage>
   );
 };
+
+const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ion-text-color)', margin: '0 0 6px' }}>{children}</p>
+);
 
 export default UploadPage;

@@ -1,14 +1,14 @@
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import { IonContent, IonHeader, IonPage, IonToolbar } from '@ionic/react';
+import PageHeader from '@/components/PageHeader';
 
 const DebtsPage: React.FC = () => (
   <IonPage>
-    <IonHeader>
-      <IonToolbar>
-        <IonTitle>หนี้สิน</IonTitle>
-      </IonToolbar>
-    </IonHeader>
-    <IonContent className="ion-padding">
-      <p>รายการหนี้และยอดผ่อนแต่ละงวด (จะพอร์ตมาจาก tanglak/src/app/debts)</p>
+    <IonHeader className="ion-no-border"><IonToolbar /></IonHeader>
+    <IonContent className="ion-padding" fullscreen>
+      <PageHeader title="หนี้สิน" subtitle="รายการหนี้และยอดผ่อนแต่ละงวด" />
+      <div className="tl-card tl-empty">
+        <p>ยังไม่มีข้อมูลหนี้สิน</p>
+      </div>
     </IonContent>
   </IonPage>
 );
