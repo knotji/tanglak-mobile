@@ -18,6 +18,7 @@ import { cameraOutline, checkmarkCircle } from 'ionicons/icons';
 import { extractDocument, type ExtractedFinancialDocument } from '@/lib/documentUpload';
 import { saveTransaction, type SaveTransactionInput } from '@/lib/saveTransaction';
 import { CATEGORY_OPTIONS } from '@/lib/categories';
+import { formatThaiDateTimeLabel } from '@/lib/date';
 import PageHeader from '@/components/PageHeader';
 
 const DOCUMENT_TYPE_LABEL: Record<string, string> = {
@@ -216,9 +217,21 @@ const UploadPage: React.FC = () => {
                     fontSize: 16,
                   }}
                 />
-                {unclearFields.includes('transaction.occurredAt') && (
-                  <IonText color="warning"><p style={{ fontSize: 12, marginTop: 4 }}>AI อ่านวันที่ไม่ชัดเจน กรุณาตรวจสอบ</p></IonText>
-                )}
+                {(() => {
+                  const label = formatThaiDateTimeLabel(draft.datetimeLocal);
+                  if (!draft.datetimeLocal) {
+                    return <IonText color="warning"><p style={{ fontSize: 12, marginTop: 4 }}>กรุณาระบุวันและเวลาที่ทำรายการ</p></IonText>;
+                  }
+                  if (!label) {
+                    return <IonText color="danger"><p style={{ fontSize: 12, marginTop: 4 }}>กรุณาตรวจสอบวันและเวลาให้ถูกต้อง</p></IonText>;
+                  }
+                  return (
+                    <p style={{ fontSize: 12, marginTop: 4, color: 'var(--tl-text-secondary)' }}>
+                      {label}
+                      {unclearFields.includes('transaction.occurredAt') && ' — AI อ่านวันที่ไม่ชัดเจน กรุณาตรวจสอบ'}
+                    </p>
+                  );
+                })()}
               </div>
 
               {draft.type !== 'transfer' && (
