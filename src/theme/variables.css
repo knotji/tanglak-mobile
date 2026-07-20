@@ -1,0 +1,41 @@
+:root {
+  --ion-font-family: "IBM Plex Sans Thai", "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ion-color-primary: #1f8a5c;
+  --ion-color-primary-rgb: 31, 138, 92;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #1b7a51;
+  --ion-color-primary-tint: #35976c;
+  --ion-color-danger: #c94b4b;
+  --ion-background-color: #f6f8f7;
+  --ion-text-color: #16241d;
+}
+
+.main-tab-bar {
+  --background: rgba(250, 252, 251, .96);
+  --border: 1px solid rgba(190, 210, 200, .35);
+  padding: 5px max(18px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  backdrop-filter: blur(18px);
+}
+
+.main-tab-bar ion-tab-button { --color: #82958c; --color-selected: #1f8a5c; font-size: 10px; font-weight: 700; }
+.main-tab-bar ion-icon { width: 20px; height: 20px; }
+
+* { box-sizing: border-box; }
+
+ion-header ion-toolbar > ion-title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 56px;
+  text-align: center;
+  pointer-events: none;
+}
+
+ion-header ion-toolbar > ion-buttons,
+ion-header ion-toolbar > ion-button {
+  position: relative;
+  z-index: 2;
+}
