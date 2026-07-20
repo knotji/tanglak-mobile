@@ -22,6 +22,7 @@ import { addDebtPayment } from '@/lib/addDebtPayment';
 import { CATEGORY_OPTIONS } from '@/lib/categories';
 import { formatThaiDateTimeLabel } from '@/lib/date';
 import { listDebts, type Debt } from '@/lib/debts';
+import { nowBangkokDatetimeLocal } from '@/lib/bangkokDate';
 import PageHeader from '@/components/PageHeader';
 
 const DOCUMENT_TYPE_LABEL: Record<string, string> = {
@@ -116,6 +117,20 @@ const UploadPage: React.FC = () => {
     }
   };
 
+  const handleManualEntry = () => {
+    setError('');
+    setUnclearFields([]);
+    setDraft({
+      type: 'expense',
+      amount: '',
+      merchant: '',
+      datetimeLocal: nowBangkokDatetimeLocal(),
+      categoryId: '',
+      debtId: '',
+    });
+    setStep('review');
+  };
+
   const handleSave = async () => {
     if (!draft) return;
     const amountNumber = Number(draft.amount);
@@ -182,6 +197,9 @@ const UploadPage: React.FC = () => {
                 }}
               />
             </label>
+            <IonButton expand="block" fill="clear" className="ion-margin-top" onClick={handleManualEntry}>
+              กรอกเองไม่ต้องสแกน
+            </IonButton>
             {error && (
               <IonText color="danger">
                 <p className="ion-margin-top">{error}</p>

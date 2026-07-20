@@ -24,6 +24,7 @@ const MainTabs = lazy(() => import('@/components/MainTabs'));
 const OverviewPage = lazy(() => import('@/pages/OverviewPage'));
 const BudgetPage = lazy(() => import('@/pages/BudgetPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const AccountsPage = lazy(() => import('@/pages/AccountsPage'));
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -64,6 +65,9 @@ const App: React.FC = () => {
               </Route>
               <Route exact path="/settings">
                 {session ? <SettingsPage /> : <Redirect to="/login" />}
+              </Route>
+              <Route exact path="/accounts">
+                {session ? <AccountsPage /> : <Redirect to="/login" />}
               </Route>
               <Route exact path="/">
                 <Redirect to={session ? '/tabs/today' : '/login'} />

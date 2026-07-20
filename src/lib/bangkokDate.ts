@@ -13,3 +13,32 @@ export function todayBangkokRange(now: Date = new Date()): { start: string; end:
   const endUtcMs = startUtcMs + 24 * 60 * 60 * 1000;
   return { start: new Date(startUtcMs).toISOString(), end: new Date(endUtcMs).toISOString() };
 }
+
+/** Current Bangkok wall-clock time as a `datetime-local` input default value. */
+export function nowBangkokDatetimeLocal(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+}
+
+/** [start, end) ISO instants for a Bangkok calendar month (`YYYY-MM`), for a `.gte`/`.lt` range query. */
+export function bangkokMonthRange(month: string): { start: string; end: string } {
+  const [year, monthNumber] = month.split('-').map(Number);
+  const start = `${month}-01T00:00:00+07:00`;
+  const nextMonth = monthNumber === 12 ? `${year + 1}-01` : `${year}-${String(monthNumber + 1).padStart(2, '0')}`;
+  const end = `${nextMonth}-01T00:00:00+07:00`;
+  return { start, end };
+}
+
+/** Current Bangkok calendar month as `YYYY-MM`. */
+export function currentBangkokMonth(now: Date = new Date()): string {
+  return nowBangkokDatetimeLocal(now).slice(0, 7);
+}

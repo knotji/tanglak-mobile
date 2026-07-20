@@ -1,5 +1,5 @@
 import { IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonPage, IonToolbar } from '@ionic/react';
-import { chevronForwardOutline, cardOutline, settingsOutline, statsChartOutline } from 'ionicons/icons';
+import { cardOutline, chevronForwardOutline, settingsOutline, statsChartOutline, walletOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 
@@ -20,6 +20,11 @@ const MorePage: React.FC = () => {
           <IonItem button detail={false} onClick={() => history.push('/budget')}>
             <IonIcon icon={cardOutline} slot="start" color="primary" />
             <IonLabel>งบประมาณ</IonLabel>
+            <IonIcon icon={chevronForwardOutline} slot="end" color="medium" />
+          </IonItem>
+          <IonItem button detail={false} onClick={() => history.push('/accounts')}>
+            <IonIcon icon={walletOutline} slot="start" color="primary" />
+            <IonLabel>บัญชี</IonLabel>
             <IonIcon icon={chevronForwardOutline} slot="end" color="medium" />
           </IonItem>
           <IonItem button detail={false} lines="none" onClick={() => history.push('/settings')}>
