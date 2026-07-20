@@ -245,7 +245,7 @@ const UploadPage: React.FC = () => {
                   <FieldLabel>หนี้ที่จะจ่าย</FieldLabel>
                   {debts.length === 0 ? (
                     <p style={{ fontSize: 13, color: 'var(--tl-text-secondary)' }}>
-                      ยังไม่มีรายการหนี้ในระบบ — เพิ่มหนี้ในแท็บ &quot;หนี้สิน&quot; ก่อน
+                      ยังไม่มีรายการหนี้ในระบบ — เพิ่มหนี้ผ่านเว็บตั้งหลักก่อน (แอปมือถือยังไม่มีหน้าเพิ่มหนี้)
                     </p>
                   ) : (
                     <IonSelect

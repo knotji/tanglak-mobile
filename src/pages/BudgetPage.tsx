@@ -74,7 +74,7 @@ const BudgetPage: React.FC = () => {
 
         {summary && (summary.hasBudget || summary.categories.length > 0) && (
           <>
-            <div className="tl-card" style={{ display: 'flex', gap: 24 }}>
+            <div className="tl-card" style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
               <div>
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 700 }}>ใช้ไปแล้ว</p>
                 <p className="tl-amount tl-amount--expense" style={{ fontSize: 22, margin: '4px 0 0' }}>{formatTHB(summary.spentTotalSatang)}</p>

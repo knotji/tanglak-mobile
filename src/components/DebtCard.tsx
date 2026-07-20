@@ -44,7 +44,7 @@ const DebtCard: React.FC<{ debt: Debt }> = ({ debt }) => {
   return (
     <article className="tl-card">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{debt.name}</h2>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, minWidth: 0, overflowWrap: 'break-word' }}>{debt.name}</h2>
         <span
           style={{
             flexShrink: 0,

@@ -151,3 +151,13 @@ ion-header ion-toolbar > ion-button {
   background: var(--tl-primary-soft);
 }
 .upload-picker p { margin: 8px 0 0; font-weight: 700; font-size: 14px; }
+
+/* Transaction-type segment (4 Thai labels: รายจ่าย/รายรับ/โอนเงิน/จ่ายหนี้) is
+   tight on narrow screens at Ionic's default segment-button font size --
+   shrink font/padding so every label stays on one line. */
+ion-segment-button {
+  --padding-start: 4px;
+  --padding-end: 4px;
+  min-width: 0;
+  font-size: 12.5px;
+}

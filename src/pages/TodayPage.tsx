@@ -50,7 +50,7 @@ const TodayPage: React.FC = () => {
         {error && <IonText color="danger"><p>{error}</p></IonText>}
 
         {transactions && (
-          <div className="tl-card" style={{ display: 'flex', gap: 24 }}>
+          <div className="tl-card" style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
             <div>
               <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 700 }}>รายจ่ายวันนี้</p>
               <p className="tl-amount tl-amount--expense" style={{ fontSize: 22, margin: '4px 0 0' }}>{formatTHB(expenseSatang)}</p>
