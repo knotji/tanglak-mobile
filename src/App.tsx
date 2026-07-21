@@ -27,6 +27,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const AccountsPage = lazy(() => import('@/pages/AccountsPage'));
 const EditTransactionPage = lazy(() => import('@/pages/EditTransactionPage'));
 const DebtFormPage = lazy(() => import('@/pages/DebtFormPage'));
+const BudgetEditPage = lazy(() => import('@/pages/BudgetEditPage'));
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -79,6 +80,9 @@ const App: React.FC = () => {
               </Route>
               <Route exact path="/debts/:id/edit">
                 {session ? <DebtFormPage /> : <Redirect to="/login" />}
+              </Route>
+              <Route exact path="/budget/edit">
+                {session ? <BudgetEditPage /> : <Redirect to="/login" />}
               </Route>
               <Route exact path="/">
                 <Redirect to={session ? '/tabs/today' : '/login'} />

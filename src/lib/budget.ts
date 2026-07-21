@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { bahtToSatang } from '@/lib/money';
 import { bangkokMonthRange, currentBangkokMonth } from '@/lib/bangkokDate';
 
 interface MonthlyBudget {
@@ -6,7 +7,7 @@ interface MonthlyBudget {
   incomeSatang: number;
 }
 
-interface BudgetCategoryRow {
+export interface BudgetCategoryRow {
   id: string;
   label: string;
   amountSatang: number;
@@ -35,6 +36,83 @@ async function listBudgetCategories(monthlyBudgetId: string): Promise<BudgetCate
     .eq('monthly_budget_id', monthlyBudgetId);
   if (error) throw new Error('โหลดหมวดงบประมาณไม่สำเร็จ');
   return (data ?? []).map((row) => ({ id: row.id, label: row.label, amountSatang: Number(row.amount_satang) }));
+}
+
+// --- Write path. No Edge Function needed here, same reasoning as debts
+// (src/lib/debts.ts): monthly_budgets.income_satang and
+// budget_categories.amount_satang both have DB-level nonnegative CHECK
+// constraints (202607110001_financial_value_guards.sql), and
+// budget_categories has a unique index on (user_id, monthly_budget_id,
+// trim(label)) preventing duplicate categories
+// (202607110005_budget_category_label_trim_uniqueness.sql) -- RLS +
+// these constraints are the real backstop; client-side checks below are
+// only for fast, friendly errors before the round-trip. ---
+
+export interface EditableBudget {
+  monthlyBudgetId: string;
+  incomeSatang: number;
+  categories: BudgetCategoryRow[];
+}
+
+/** Fetches (or creates, with income 0) the current month's budget row, plus its categories -- for the edit screen, which always needs a row to attach categories to. */
+export async function getOrCreateEditableBudget(): Promise<EditableBudget> {
+  const month = currentBangkokMonth();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('กรุณาเข้าสู่ระบบใหม่');
+
+  let budget = await getMonthlyBudget(month);
+  if (!budget) {
+    const { data, error } = await supabase
+      .from('monthly_budgets')
+      .insert({ user_id: user.id, month, income_satang: 0 })
+      .select('id, income_satang')
+      .single();
+    if (error) throw new Error('สร้างงบประมาณไม่สำเร็จ');
+    budget = { id: data.id, incomeSatang: Number(data.income_satang) };
+  }
+
+  const categories = await listBudgetCategories(budget.id);
+  return { monthlyBudgetId: budget.id, incomeSatang: budget.incomeSatang, categories };
+}
+
+export async function setMonthlyIncome(monthlyBudgetId: string, incomeBaht: string): Promise<void> {
+  const satang = bahtToSatang(incomeBaht);
+  if (!Number.isFinite(satang) || satang < 0) throw new Error('จำนวนเงินต้องไม่ติดลบ');
+  const { error } = await supabase.from('monthly_budgets').update({ income_satang: satang }).eq('id', monthlyBudgetId);
+  if (error) throw new Error('บันทึกรายรับไม่สำเร็จ');
+}
+
+export async function addBudgetCategory(monthlyBudgetId: string, label: string, amountBaht: string): Promise<BudgetCategoryRow> {
+  const satang = amountBaht.trim() === '' ? 0 : bahtToSatang(amountBaht);
+  if (!Number.isFinite(satang) || satang < 0) throw new Error('จำนวนเงินต้องไม่ติดลบ');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('กรุณาเข้าสู่ระบบใหม่');
+  const { data, error } = await supabase
+    .from('budget_categories')
+    .insert({ user_id: user.id, monthly_budget_id: monthlyBudgetId, label, amount_satang: satang })
+    .select('id, label, amount_satang')
+    .single();
+  if (error) {
+    if (error.code === '23505') throw new Error('มีหมวดหมู่นี้อยู่แล้ว');
+    throw new Error('เพิ่มหมวดหมู่ไม่สำเร็จ');
+  }
+  return { id: data.id, label: data.label, amountSatang: Number(data.amount_satang) };
+}
+
+export async function updateBudgetCategoryAmount(categoryId: string, amountBaht: string): Promise<void> {
+  const satang = amountBaht.trim() === '' ? 0 : bahtToSatang(amountBaht);
+  if (!Number.isFinite(satang) || satang < 0) throw new Error('จำนวนเงินต้องไม่ติดลบ');
+  const { error } = await supabase.from('budget_categories').update({ amount_satang: satang }).eq('id', categoryId);
+  if (error) throw new Error('บันทึกหมวดหมู่ไม่สำเร็จ');
+}
+
+export async function deleteBudgetCategory(categoryId: string): Promise<void> {
+  const { error } = await supabase.from('budget_categories').delete().eq('id', categoryId);
+  if (error) throw new Error('ลบหมวดหมู่ไม่สำเร็จ');
 }
 
 async function listMonthTransactions(month: string): Promise<RelevantTransaction[]> {

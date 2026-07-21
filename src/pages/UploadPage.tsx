@@ -20,6 +20,7 @@ import { addDebtPayment } from '@/lib/addDebtPayment';
 import { CATEGORY_OPTIONS } from '@/lib/categories';
 import { listDebts, type Debt } from '@/lib/debts';
 import { nowBangkokDatetimeLocal } from '@/lib/bangkokDate';
+import { isoInstantToBangkokDatetimeLocal } from '@/lib/date';
 import PageHeader from '@/components/PageHeader';
 import FieldLabel from '@/components/FieldLabel';
 import DateTimeField from '@/components/DateTimeField';
@@ -45,14 +46,6 @@ interface DraftForm {
   debtId: string;
 }
 
-function isoToDatetimeLocal(iso?: string): string {
-  if (!iso) return '';
-  // Bangkok is a fixed UTC+7 offset app-wide -- take the printed wall-clock
-  // digits as-is rather than converting through the device's own timezone.
-  const match = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
-  return match ? `${match[1]}T${match[2]}` : '';
-}
-
 function datetimeLocalToIso(value: string): string {
   return value ? `${value}:00+07:00` : '';
 }
@@ -65,7 +58,7 @@ function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
     type: savableType,
     amount: result.transaction?.amount !== undefined ? String(result.transaction.amount) : '',
     merchant: result.transaction?.merchant ?? '',
-    datetimeLocal: isoToDatetimeLocal(result.transaction?.occurredAt),
+    datetimeLocal: result.transaction?.occurredAt ? isoInstantToBangkokDatetimeLocal(result.transaction.occurredAt) : '',
     categoryId: result.transaction?.categoryId ?? '',
     debtId: '',
   };

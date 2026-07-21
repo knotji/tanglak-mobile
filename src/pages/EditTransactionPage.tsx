@@ -24,6 +24,7 @@ import DateTimeField from '@/components/DateTimeField';
 import { CATEGORY_OPTIONS } from '@/lib/categories';
 import { getTransactionById } from '@/lib/transactions';
 import { saveTransaction, deleteTransaction, type SaveTransactionInput } from '@/lib/saveTransaction';
+import { isoInstantToBangkokDatetimeLocal } from '@/lib/date';
 
 type EditableType = 'expense' | 'income' | 'transfer' | 'refund';
 
@@ -33,11 +34,6 @@ interface DraftForm {
   merchant: string;
   datetimeLocal: string;
   categoryId: string;
-}
-
-function isoToDatetimeLocal(iso: string): string {
-  const match = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
-  return match ? `${match[1]}T${match[2]}` : '';
 }
 
 function datetimeLocalToIso(value: string): string {
@@ -67,7 +63,7 @@ const EditTransactionPage: React.FC = () => {
           type: transaction.type,
           amount: String(transaction.amountSatang / 100),
           merchant: transaction.merchant ?? '',
-          datetimeLocal: isoToDatetimeLocal(transaction.occurredAt),
+          datetimeLocal: isoInstantToBangkokDatetimeLocal(transaction.occurredAt),
           categoryId: CATEGORY_OPTIONS.find((option) => option.label === transaction.categoryLabel)?.id ?? '',
         });
       })

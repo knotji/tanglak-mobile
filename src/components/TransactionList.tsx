@@ -4,6 +4,10 @@ import { useHistory } from 'react-router-dom';
 import TransactionRow from '@/components/TransactionRow';
 import type { Transaction } from '@/lib/transactions';
 import { deleteTransaction } from '@/lib/saveTransaction';
+import { groupTransactionsByBangkokDay, dayNetSatang } from '@/lib/groupByDay';
+import { formatThaiDayMonthLabel } from '@/lib/date';
+import { nowBangkokDatetimeLocal } from '@/lib/bangkokDate';
+import { formatTHB } from '@/lib/money';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -40,17 +44,42 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
     }
   };
 
+  const todayDateKey = nowBangkokDatetimeLocal().slice(0, 10);
+  const groups = groupTransactionsByBangkokDay(transactions);
+
   return (
     <>
-      <div className="tl-card" style={{ padding: '4px 16px' }}>
-        {transactions.map((transaction, index) => (
-          <div key={transaction.id} style={{ borderTop: index === 0 ? 'none' : '1px solid var(--tl-border)' }}>
-            <button type="button" className="tl-tap-row" onClick={() => setActive(transaction)}>
-              <TransactionRow transaction={transaction} />
-            </button>
+      {groups.map((group) => {
+        const net = dayNetSatang(group.transactions);
+        const label = formatThaiDayMonthLabel(group.dateKey) ?? group.dateKey;
+        return (
+          <div key={group.dateKey} className="tl-card" style={{ padding: '4px 16px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 0',
+                borderBottom: '1px solid var(--tl-border)',
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 700 }}>
+                {group.dateKey === todayDateKey ? `วันนี้ · ${label}` : label}
+              </span>
+              <span className={`tl-amount ${net < 0 ? 'tl-amount--expense' : ''}`} style={{ fontSize: 13 }}>
+                {formatTHB(net, { showPositiveSign: net >= 0 })}
+              </span>
+            </div>
+            {group.transactions.map((transaction, index) => (
+              <div key={transaction.id} style={{ borderTop: index === 0 ? 'none' : '1px solid var(--tl-border)' }}>
+                <button type="button" className="tl-tap-row" onClick={() => setActive(transaction)}>
+                  <TransactionRow transaction={transaction} />
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        );
+      })}
 
       <IonActionSheet
         isOpen={active !== null && pendingDelete === null}

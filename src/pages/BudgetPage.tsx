@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { IonBackButton, IonButtons, IonContent, IonHeader, IonPage, IonSpinner, IonText, IonToolbar, useIonViewWillEnter } from '@ionic/react';
+import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonToolbar, useIonViewWillEnter } from '@ionic/react';
+import { pencilOutline } from 'ionicons/icons';
+import { useHistory } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import { getBudgetSummaryForCurrentMonth, type BudgetSummary, type CategorySummary } from '@/lib/budget';
 import { formatTHB } from '@/lib/money';
@@ -39,6 +41,7 @@ const CategoryRow: React.FC<{ category: CategorySummary }> = ({ category }) => (
 );
 
 const BudgetPage: React.FC = () => {
+  const history = useHistory();
   const [summary, setSummary] = useState<BudgetSummary | null>(null);
   const [error, setError] = useState('');
 
@@ -55,6 +58,11 @@ const BudgetPage: React.FC = () => {
           <IonButtons slot="start">
             <IonBackButton defaultHref="/tabs/more" text="" />
           </IonButtons>
+          <IonButtons slot="end">
+            <IonButton onClick={() => history.push('/budget/edit')}>
+              <IonIcon icon={pencilOutline} slot="icon-only" />
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding" fullscreen>
@@ -69,6 +77,7 @@ const BudgetPage: React.FC = () => {
         {summary && !summary.hasBudget && summary.categories.length === 0 && (
           <div className="tl-card tl-empty">
             <p>ยังไม่ได้ตั้งงบประมาณเดือนนี้</p>
+            <IonButton className="ion-margin-top" onClick={() => history.push('/budget/edit')}>ตั้งงบประมาณ</IonButton>
           </div>
         )}
 

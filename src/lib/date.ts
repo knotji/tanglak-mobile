@@ -42,6 +42,34 @@ export function formatThaiDateTimeLabel(value: string): string | null {
   return `${dateLabel} เวลา ${timeLabel}`;
 }
 
+/**
+ * Converts an ISO instant (Bangkok wall-clock digits with an explicit
+ * +07:00 offset, e.g. from AI extraction, OR a UTC instant with a Z/+00:00
+ * offset, e.g. whatever Supabase/PostgREST returns for a `timestamptz`
+ * column) into a Bangkok wall-clock "YYYY-MM-DDTHH:mm" string.
+ *
+ * Do NOT replace this with naive string-slicing of the ISO digits
+ * (`iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/)`) -- that only happens
+ * to be correct when the source string's offset is already +07:00. A
+ * value read back from the database is UTC, so slicing its raw digits
+ * silently shows a time 7 hours earlier than the real Bangkok time (bug
+ * found via a slip that displayed "01:32" for what was actually an 08:32
+ * purchase). `new Date(iso)` resolves to the correct instant regardless
+ * of the source offset notation, so adding +7h from there is correct in
+ * both cases.
+ */
+export function isoInstantToBangkokDatetimeLocal(iso: string): string {
+  const instant = new Date(iso);
+  if (Number.isNaN(instant.getTime())) return '';
+  const bangkok = new Date(instant.getTime() + 7 * 60 * 60 * 1000);
+  const y = bangkok.getUTCFullYear();
+  const m = String(bangkok.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(bangkok.getUTCDate()).padStart(2, '0');
+  const h = String(bangkok.getUTCHours()).padStart(2, '0');
+  const min = String(bangkok.getUTCMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d}T${h}:${min}`;
+}
+
 /** e.g. "5 ก.ค. 2026" -- date-only counterpart of formatThaiDateTimeLabel, for date (no time) fields like a debt's due date. */
 export function formatThaiDateLabel(dateKey: string): string | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
@@ -52,4 +80,17 @@ export function formatThaiDateLabel(dateKey: string): string | null {
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
   return new Intl.DateTimeFormat('th-TH-u-ca-gregory', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+}
+
+/**
+ * "18 ก.ค." (day + month, no year -- day/month are the same regardless of
+ * Buddhist vs Gregorian calendar, so no -u-ca-gregory override is needed
+ * here the way formatThaiDateLabel/formatThaiDateTimeLabel need one).
+ * Ported from tanglak's TransactionGroup.tsx dayLabel, day-group header use.
+ */
+export function formatThaiDayMonthLabel(dateKey: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return null;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return new Intl.DateTimeFormat('th-TH', { timeZone: 'UTC', day: 'numeric', month: 'short' }).format(date);
 }

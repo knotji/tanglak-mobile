@@ -2,7 +2,7 @@ import { IonIcon } from '@ionic/react';
 import { arrowDownCircle, arrowUpCircle, cardOutline, chevronForwardOutline, swapHorizontal } from 'ionicons/icons';
 import type { Transaction } from '@/lib/transactions';
 import { formatTHB } from '@/lib/money';
-import { formatThaiDateTimeLabel } from '@/lib/date';
+import { formatThaiDateTimeLabel, isoInstantToBangkokDatetimeLocal } from '@/lib/date';
 
 const TYPE_ICON: Record<Transaction['type'], string> = {
   income: arrowDownCircle,
@@ -28,16 +28,11 @@ const TYPE_LABEL: Record<Transaction['type'], string> = {
   transfer: 'โอนเงิน',
 };
 
-function isoToDatetimeLocal(iso: string): string {
-  const match = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
-  return match ? `${match[1]}T${match[2]}` : '';
-}
-
 const TransactionRow: React.FC<{ transaction: Transaction }> = ({ transaction }) => {
   const isIncoming = transaction.type === 'income' || transaction.type === 'refund';
   const tone = TYPE_TONE[transaction.type];
   const signedSatang = isIncoming ? transaction.amountSatang : -transaction.amountSatang;
-  const time = formatThaiDateTimeLabel(isoToDatetimeLocal(transaction.occurredAt));
+  const time = formatThaiDateTimeLabel(isoInstantToBangkokDatetimeLocal(transaction.occurredAt));
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
