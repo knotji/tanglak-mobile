@@ -60,8 +60,7 @@ function mapRow(row: DebtRow): Debt {
   };
 }
 
-/** Matches tanglak's listDebts default (includeClosed=false): excludes deleted and paid_off. */
-export async function listDebts(): Promise<Debt[]> {
+async function fetchDebtRows(): Promise<Debt[]> {
   const { data, error } = await supabase
     .from('debts')
     .select(COLUMNS)
@@ -70,6 +69,42 @@ export async function listDebts(): Promise<Debt[]> {
     .order('due_date', { ascending: true });
   if (error) throw new Error('โหลดรายการหนี้ไม่สำเร็จ');
   return (data ?? []).map(mapRow);
+}
+
+/**
+ * Auto-advance only when the current cycle is already fully paid AND the
+ * due date has passed -- there is nothing left to signal by staying put
+ * (the minimum/full amount is met), so rolling it forward is pure
+ * bookkeeping. An unpaid/overdue cycle is never auto-advanced -- that
+ * would hide money still owed, which is exactly the "never silently
+ * transition financial state" rule the rest of this app follows. See
+ * advanceDebtCycle for the "เริ่มรอบใหม่" manual button this reuses --
+ * both paths share the same write, this just decides when to trigger it
+ * without the user tapping anything.
+ */
+function shouldAutoAdvance(debt: Debt): boolean {
+  if (!debt.dueDate) return false;
+  if (debt.amountDueSatang === null || debt.amountDueSatang <= 0) return false;
+  if (debt.amountPaidThisCycleSatang < debt.amountDueSatang) return false;
+  return daysUntilDue(debt.dueDate) < 0;
+}
+
+/** Matches tanglak's listDebts default (includeClosed=false): excludes deleted and paid_off. Auto-advances any debt whose cycle is fully paid and past due before returning (see shouldAutoAdvance). */
+export async function listDebts(): Promise<Debt[]> {
+  const debts = await fetchDebtRows();
+  const toAdvance = debts.filter(shouldAutoAdvance);
+  if (toAdvance.length === 0) return debts;
+
+  for (const debt of toAdvance) {
+    try {
+      await advanceDebtCycle(debt);
+    } catch {
+      // Best-effort: a failed auto-advance (e.g. a transient network blip)
+      // should never block the user from seeing their debt list. It will
+      // simply be retried on the next load.
+    }
+  }
+  return fetchDebtRows();
 }
 
 export async function getDebtById(id: string): Promise<Debt | null> {
