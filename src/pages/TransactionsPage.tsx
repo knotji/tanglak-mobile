@@ -47,7 +47,10 @@ const TransactionsPage: React.FC = () => {
         )}
 
         {transactions && transactions.length > 0 && (
-          <TransactionList transactions={transactions} onChanged={() => void load()} />
+          <TransactionList
+            transactions={transactions}
+            onDeleted={(id) => setTransactions((current) => current?.filter((t) => t.id !== id) ?? current)}
+          />
         )}
       </IonContent>
     </IonPage>

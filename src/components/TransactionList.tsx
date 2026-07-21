@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { IonActionSheet, IonAlert } from '@ionic/react';
+import { IonActionSheet, IonAlert, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import TransactionRow from '@/components/TransactionRow';
 import type { Transaction } from '@/lib/transactions';
@@ -7,10 +7,13 @@ import { deleteTransaction } from '@/lib/saveTransaction';
 
 interface TransactionListProps {
   transactions: Transaction[];
-  onChanged: () => void;
+  /** Called with the deleted row's id right after a successful delete, so the
+   * caller can drop it from its own state immediately -- doesn't wait on a
+   * fresh network round-trip to reflect the removal. */
+  onDeleted: (id: string) => void;
 }
 
-const TransactionList: React.FC<TransactionListProps> = ({ transactions, onChanged }) => {
+const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDeleted }) => {
   const history = useHistory();
   const [active, setActive] = useState<Transaction | null>(null);
   // Separate from `active`: the action sheet's onDidDismiss fires (and
@@ -21,13 +24,16 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onChang
   // so handleDelete always saw active === null and silently no-opped.
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
     setBusy(true);
     try {
       await deleteTransaction(pendingDelete.id);
-      onChanged();
+      onDeleted(pendingDelete.id);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'ลบรายการไม่สำเร็จ');
     } finally {
       setBusy(false);
       setPendingDelete(null);
@@ -69,6 +75,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onChang
           { text: busy ? 'กำลังลบ…' : 'ลบ', role: 'destructive', handler: () => { void handleDelete(); } },
         ]}
       />
+
+      <IonToast isOpen={error !== ''} message={error} duration={3000} color="danger" onDidDismiss={() => setError('')} />
     </>
   );
 };
