@@ -1,5 +1,5 @@
 import { IonIcon } from '@ionic/react';
-import { arrowDownCircle, arrowUpCircle, cardOutline, swapHorizontal } from 'ionicons/icons';
+import { arrowDownCircle, arrowUpCircle, cardOutline, chevronForwardOutline, swapHorizontal } from 'ionicons/icons';
 import type { Transaction } from '@/lib/transactions';
 import { formatTHB } from '@/lib/money';
 import { formatThaiDateTimeLabel } from '@/lib/date';
@@ -54,6 +54,7 @@ const TransactionRow: React.FC<{ transaction: Transaction }> = ({ transaction })
       <span className={`tl-amount tl-amount--${tone}`} style={{ fontSize: 14 }}>
         {formatTHB(signedSatang, { showPositiveSign: isIncoming })}
       </span>
+      <IonIcon icon={chevronForwardOutline} color="medium" style={{ fontSize: 16, flexShrink: 0, opacity: 0.6 }} />
     </div>
   );
 };

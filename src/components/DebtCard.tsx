@@ -1,5 +1,5 @@
 import { IonIcon } from '@ionic/react';
-import { alertCircleOutline, calendarClearOutline, checkmarkCircleOutline } from 'ionicons/icons';
+import { alertCircleOutline, calendarClearOutline, checkmarkCircleOutline, chevronForwardOutline } from 'ionicons/icons';
 import {
   DEBT_DUE_STATUS_LABEL_TH,
   debtDueStatus,
@@ -45,24 +45,26 @@ const DebtCard: React.FC<{ debt: Debt }> = ({ debt }) => {
     <article className="tl-card">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, minWidth: 0, overflowWrap: 'break-word' }}>{debt.name}</h2>
-        <span
-          style={{
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            borderRadius: 14,
-            padding: '5px 10px',
-            fontSize: 11.5,
-            fontWeight: 700,
-            background: tone.bg,
-            color: tone.fg,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <IonIcon icon={STATUS_ICON[status]} style={{ fontSize: 14 }} />
-          {DEBT_DUE_STATUS_LABEL_TH[status]}
-        </span>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              borderRadius: 14,
+              padding: '5px 10px',
+              fontSize: 11.5,
+              fontWeight: 700,
+              background: tone.bg,
+              color: tone.fg,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <IonIcon icon={STATUS_ICON[status]} style={{ fontSize: 14 }} />
+            {DEBT_DUE_STATUS_LABEL_TH[status]}
+          </span>
+          <IonIcon icon={chevronForwardOutline} color="medium" style={{ fontSize: 16, opacity: 0.6 }} />
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 18 }}>

@@ -152,6 +152,21 @@ ion-header ion-toolbar > ion-button {
 }
 .upload-picker p { margin: 8px 0 0; font-weight: 700; font-size: 14px; }
 
+/* Full reset for a <button> used purely as a tap target around a row/card
+   (TransactionList rows, DebtsPage cards) -- kept as a class rather than
+   an inline `all: unset` style so the :active feedback below isn't
+   overridden by inline style's higher specificity. */
+.tl-tap-row {
+  all: unset;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  transition: opacity 0.1s ease;
+}
+.tl-tap-row:active {
+  opacity: 0.6;
+}
+
 /* Transaction-type segment (4 Thai labels: รายจ่าย/รายรับ/โอนเงิน/จ่ายหนี้) is
    tight on narrow screens at Ionic's default segment-button font size --
    shrink font/padding so every label stays on one line. */

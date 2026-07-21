@@ -20,10 +20,11 @@ import { extractDocument, type ExtractedFinancialDocument } from '@/lib/document
 import { saveTransaction, type SaveTransactionInput } from '@/lib/saveTransaction';
 import { addDebtPayment } from '@/lib/addDebtPayment';
 import { CATEGORY_OPTIONS } from '@/lib/categories';
-import { formatThaiDateTimeLabel } from '@/lib/date';
 import { listDebts, type Debt } from '@/lib/debts';
 import { nowBangkokDatetimeLocal } from '@/lib/bangkokDate';
 import PageHeader from '@/components/PageHeader';
+import FieldLabel from '@/components/FieldLabel';
+import DateTimeField from '@/components/DateTimeField';
 
 const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   salary_slip: 'สลิปเงินเดือน',
@@ -273,36 +274,11 @@ const UploadPage: React.FC = () => {
               )}
 
               <div style={{ marginTop: 14 }}>
-                <FieldLabel>วันที่และเวลา</FieldLabel>
-                <input
-                  type="datetime-local"
-                  className="tl-datetime-input"
+                <DateTimeField
                   value={draft.datetimeLocal}
-                  onChange={(e) => setDraft({ ...draft, datetimeLocal: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--tl-border)',
-                    fontFamily: 'inherit',
-                    fontSize: 16,
-                  }}
+                  onChange={(value) => setDraft({ ...draft, datetimeLocal: value })}
+                  hint={unclearFields.includes('transaction.occurredAt') ? 'AI อ่านวันที่ไม่ชัดเจน กรุณาตรวจสอบ' : undefined}
                 />
-                {(() => {
-                  const label = formatThaiDateTimeLabel(draft.datetimeLocal);
-                  if (!draft.datetimeLocal) {
-                    return <IonText color="warning"><p style={{ fontSize: 12, marginTop: 4 }}>กรุณาระบุวันและเวลาที่ทำรายการ</p></IonText>;
-                  }
-                  if (!label) {
-                    return <IonText color="danger"><p style={{ fontSize: 12, marginTop: 4 }}>กรุณาตรวจสอบวันและเวลาให้ถูกต้อง</p></IonText>;
-                  }
-                  return (
-                    <p style={{ fontSize: 12, marginTop: 4, color: 'var(--tl-text-secondary)' }}>
-                      {label}
-                      {unclearFields.includes('transaction.occurredAt') && ' — AI อ่านวันที่ไม่ชัดเจน กรุณาตรวจสอบ'}
-                    </p>
-                  );
-                })()}
               </div>
 
               {draft.type !== 'transfer' && draft.type !== 'debt_payment' && (
@@ -351,9 +327,5 @@ const UploadPage: React.FC = () => {
     </IonPage>
   );
 };
-
-const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ion-text-color)', margin: '0 0 6px' }}>{children}</p>
-);
 
 export default UploadPage;

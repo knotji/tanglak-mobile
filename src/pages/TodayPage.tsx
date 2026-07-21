@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { IonContent, IonHeader, IonPage, IonRefresher, IonRefresherContent, IonSpinner, IonText, IonToolbar, useIonViewWillEnter } from '@ionic/react';
 import PageHeader from '@/components/PageHeader';
-import TransactionRow from '@/components/TransactionRow';
+import TransactionList from '@/components/TransactionList';
 import { listTodayTransactions, type Transaction } from '@/lib/transactions';
 import { formatTHB } from '@/lib/money';
 
@@ -69,13 +69,7 @@ const TodayPage: React.FC = () => {
         )}
 
         {transactions && transactions.length > 0 && (
-          <div className="tl-card" style={{ padding: '4px 16px' }}>
-            {transactions.map((transaction, index) => (
-              <div key={transaction.id} style={{ borderTop: index === 0 ? 'none' : '1px solid var(--tl-border)' }}>
-                <TransactionRow transaction={transaction} />
-              </div>
-            ))}
-          </div>
+          <TransactionList transactions={transactions} onChanged={() => void load()} />
         )}
       </IonContent>
     </IonPage>

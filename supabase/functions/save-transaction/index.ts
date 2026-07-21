@@ -2,18 +2,22 @@
 //
 // The write side of the slip-scan flow (see extract-document). Ported from
 // tanglak's src/app/actions/finance.ts `saveTransactionAction` /
-// src/lib/data/finance-repository.ts `createTransaction` -- same
-// validation, same insert shape, same "confirmed" status and RLS-scoped
-// client. This is a server-side re-validation step: the client (review
-// screen) has already let the user edit/confirm the AI draft, but per
+// src/lib/data/finance-repository.ts `createTransaction`/`updateTransaction`
+// -- same validation, same insert/update shape, same "confirmed" status and
+// RLS-scoped client. This is a server-side re-validation step: the client
+// (review screen) has already let the user edit/confirm a draft, but per
 // docs/agent/FINANCIAL_INVARIANTS.md, client-side validation is never
 // sufficient on its own -- amount and occurredAt are re-checked here
 // before any write, and a validation failure never produces a partial row
-// (the insert either fully succeeds or is rejected outright).
+// (the insert/update either fully succeeds or is rejected outright).
 //
-// Scope, deliberately: only type in (income, expense, transfer, refund).
-// "debt_payment" requires a debt_id and this app doesn't have a debt
-// picker yet -- rejected explicitly rather than half-supported.
+// Scope, deliberately: only type in (income, expense, transfer, refund),
+// for both create and update. "debt_payment" needs a debt_id, its own
+// three-part write shape, and a cycle recalculation -- see
+// add-debt-payment. Editing an existing debt_payment transaction is not
+// supported here (or anywhere yet); the client tells the user to delete
+// and re-add it instead (delete-transaction correctly recalculates the
+// cycle; a same-shaped edit here would not).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -44,6 +48,7 @@ Deno.serve(async (request) => {
     if (!user) return json({ error: 'Authentication Required' }, 401);
 
     const body = await request.json();
+    const id = typeof body.id === 'string' && body.id ? body.id : null;
 
     const type = typeof body.type === 'string' ? body.type : '';
     if (!ALLOWED_TYPES.has(type)) return json({ error: 'ประเภทรายการไม่ถูกต้อง' }, 400);
@@ -74,6 +79,44 @@ Deno.serve(async (request) => {
     const categoryLabel = typeof body.categoryLabel === 'string' && body.categoryLabel.trim() ? body.categoryLabel.trim().slice(0, 100) : null;
     const paymentMethod = typeof body.paymentMethod === 'string' && body.paymentMethod.trim() ? body.paymentMethod.trim().slice(0, 100) : null;
     const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim().slice(0, 1000) : null;
+
+    if (id) {
+      const { data: existing, error: readError } = await supabase
+        .from('transactions')
+        .select('type')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (readError) {
+        console.error('[save-transaction] read failed', readError.message);
+        return json({ error: 'แก้ไขรายการไม่สำเร็จ' }, 500);
+      }
+      if (!existing) return json({ error: 'ไม่พบรายการนี้' }, 404);
+      if (existing.type === 'debt_payment') {
+        return json({ error: 'แก้ไขรายการจ่ายหนี้ยังไม่รองรับ กรุณาลบแล้วบันทึกใหม่แทน' }, 400);
+      }
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .update({
+          type,
+          amount_satang: amountSatang,
+          occurred_at: occurredAtDate.toISOString(),
+          merchant,
+          category_label: categoryLabel,
+          payment_method: paymentMethod,
+          note,
+        })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select('id, type, amount_satang, occurred_at, merchant, category_label')
+        .single();
+      if (error) {
+        console.error('[save-transaction] update failed', error.message);
+        return json({ error: 'แก้ไขรายการไม่สำเร็จ' }, 500);
+      }
+      return json({ data });
+    }
 
     const { data, error } = await supabase
       .from('transactions')

@@ -60,3 +60,9 @@ export async function listTodayTransactions(): Promise<Transaction[]> {
   if (error) throw new Error('โหลดข้อมูลวันนี้ไม่สำเร็จ');
   return (data ?? []).map(mapRow);
 }
+
+export async function getTransactionById(id: string): Promise<Transaction | null> {
+  const { data, error } = await supabase.from('transactions').select(COLUMNS).eq('id', id).maybeSingle();
+  if (error) throw new Error('โหลดรายการไม่สำเร็จ');
+  return data ? mapRow(data) : null;
+}
