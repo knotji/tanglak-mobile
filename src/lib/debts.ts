@@ -11,6 +11,8 @@ export interface Debt {
   amountPaidThisCycleSatang: number;
   dueDate: string | null;
   recurringDueDay: number | null;
+  cycleStartDate: string | null;
+  cycleEndDate: string | null;
   paymentMode: 'fixed_monthly' | 'variable_monthly' | 'installment' | 'one_time';
   interestRateAnnual: number | null;
   notes: string | null;
@@ -27,6 +29,8 @@ interface DebtRow {
   amount_paid_this_cycle_satang: number;
   due_date: string | null;
   recurring_due_day: number | null;
+  cycle_start_date: string | null;
+  cycle_end_date: string | null;
   payment_mode: Debt['paymentMode'] | null;
   interest_rate_annual: number | null;
   notes: string | null;
@@ -34,7 +38,7 @@ interface DebtRow {
 }
 
 const COLUMNS =
-  'id, name, creditor, outstanding_balance_satang, amount_due_satang, minimum_payment_satang, amount_paid_this_cycle_satang, due_date, recurring_due_day, payment_mode, interest_rate_annual, notes, status';
+  'id, name, creditor, outstanding_balance_satang, amount_due_satang, minimum_payment_satang, amount_paid_this_cycle_satang, due_date, recurring_due_day, cycle_start_date, cycle_end_date, payment_mode, interest_rate_annual, notes, status';
 
 function mapRow(row: DebtRow): Debt {
   return {
@@ -47,6 +51,8 @@ function mapRow(row: DebtRow): Debt {
     amountPaidThisCycleSatang: Number(row.amount_paid_this_cycle_satang),
     dueDate: row.due_date,
     recurringDueDay: row.recurring_due_day,
+    cycleStartDate: row.cycle_start_date,
+    cycleEndDate: row.cycle_end_date,
     paymentMode: row.payment_mode ?? 'variable_monthly',
     interestRateAnnual: row.interest_rate_annual,
     notes: row.notes,
@@ -244,4 +250,112 @@ function formatRateNumber(rate: number): string {
 export function formatInterestRateSummary(annualRatePercent: number): string {
   const monthly = annualRatePercent / 12;
   return `ดอกเบี้ย ${formatRateNumber(annualRatePercent)}% ต่อปี (ประมาณ ${formatRateNumber(monthly)}% ต่อเดือน)`;
+}
+
+// --- Advance to next cycle. Explicit user action only -- never automatic.
+// tanglak's own debt-status.ts is explicit that "cycle_paid_in_full ...
+// must never be" auto-transitioned into anything else; the same "no
+// silent financial-state transition" philosophy applies here. Neither the
+// web app nor mobile has ever had an auto-rollover feature -- this is a
+// new, mobile-first feature, deliberately scoped to just moving the
+// static due_date/cycle_start_date/cycle_end_date fields forward by one
+// month and recomputing amount_paid_this_cycle_satang for the new
+// window. It never touches outstanding_balance_satang (a human must
+// still update that from their actual statement -- advancing the cycle
+// is not the same claim as "the balance changed"). ---
+
+function daysInMonth(year: number, month1based: number): number {
+  return new Date(Date.UTC(year, month1based, 0)).getUTCDate();
+}
+
+/** Shifts a YYYY-MM-DD date forward by exactly one month, clamping the day if the target month is shorter. */
+function shiftDateKeyByOneMonth(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const targetYear = m === 12 ? y + 1 : y;
+  const targetMonth = m === 12 ? 1 : m + 1;
+  const day = Math.min(d, daysInMonth(targetYear, targetMonth));
+  return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/** Same as shiftDateKeyByOneMonth, but uses recurringDueDay for the target day when set (matches "due on the Nth of every month" semantics) instead of preserving the original day-of-month. */
+function nextDueDate(currentDueDate: string, recurringDueDay: number | null): string {
+  if (!recurringDueDay) return shiftDateKeyByOneMonth(currentDueDate);
+  const [y, m] = currentDueDate.split('-').map(Number);
+  const targetYear = m === 12 ? y + 1 : y;
+  const targetMonth = m === 12 ? 1 : m + 1;
+  const day = Math.min(recurringDueDay, daysInMonth(targetYear, targetMonth));
+  return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function bangkokDateStartInstant(dateKey: string): string {
+  return `${dateKey}T00:00:00+07:00`;
+}
+
+/** Recomputes amount_paid_this_cycle_satang from scratch for whatever cycle window the debt currently has (explicit cycle dates, or the current Bangkok calendar month as fallback) -- same logic as supabase/functions/_shared/debtCycle.ts, ported for direct client use since this write needs no elevated privilege (RLS + the debt's own ownership already scope it). */
+async function recalculateAmountPaidThisCycle(debtId: string): Promise<void> {
+  const { data: debt, error: debtError } = await supabase
+    .from('debts')
+    .select('cycle_start_date, cycle_end_date')
+    .eq('id', debtId)
+    .maybeSingle();
+  if (debtError || !debt) throw new Error('ไม่พบหนี้นี้');
+
+  let startInstant: string;
+  let endExclusiveInstant: string;
+  if (debt.cycle_start_date && debt.cycle_end_date) {
+    // Cycle end is exclusive: the window runs through the end of
+    // cycle_end_date, so the exclusive boundary is the day after it.
+    startInstant = bangkokDateStartInstant(debt.cycle_start_date);
+    endExclusiveInstant = bangkokDateStartInstant(addOneDay(debt.cycle_end_date));
+  } else {
+    const todayKey = getBangkokTodayString();
+    const [y, m] = todayKey.split('-').map(Number);
+    const start = `${todayKey.slice(0, 7)}-01`;
+    const end = `${y}-${String(m).padStart(2, '0')}-${String(daysInMonth(y, m)).padStart(2, '0')}`;
+    startInstant = bangkokDateStartInstant(start);
+    endExclusiveInstant = bangkokDateStartInstant(addOneDay(end));
+  }
+
+  const { data: rows, error: sumError } = await supabase
+    .from('transactions')
+    .select('amount_satang')
+    .eq('debt_id', debtId)
+    .eq('type', 'debt_payment')
+    .eq('status', 'confirmed')
+    .gte('occurred_at', startInstant)
+    .lt('occurred_at', endExclusiveInstant);
+  if (sumError) throw new Error('คำนวณยอดจ่ายรอบนี้ไม่สำเร็จ');
+
+  const total = (rows ?? []).reduce((sum, row) => sum + Number(row.amount_satang), 0);
+  const { error: updateError } = await supabase.from('debts').update({ amount_paid_this_cycle_satang: total }).eq('id', debtId);
+  if (updateError) throw new Error('บันทึกยอดจ่ายรอบนี้ไม่สำเร็จ');
+}
+
+function addOneDay(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`;
+}
+
+export interface CycleAdvancePreview {
+  previousDueDate: string | null;
+  nextDueDate: string;
+}
+
+export function previewCycleAdvance(debt: Debt): CycleAdvancePreview | null {
+  if (!debt.dueDate) return null;
+  return { previousDueDate: debt.dueDate, nextDueDate: nextDueDate(debt.dueDate, debt.recurringDueDay) };
+}
+
+/** Advances due_date (and cycle_start_date/cycle_end_date, if the debt has explicit ones) by one month, then recomputes amount_paid_this_cycle_satang for the new window. Never touches outstanding_balance_satang. */
+export async function advanceDebtCycle(debt: Debt): Promise<void> {
+  if (!debt.dueDate) throw new Error('หนี้นี้ยังไม่มีวันครบกำหนด');
+  const patch: Record<string, string> = { due_date: nextDueDate(debt.dueDate, debt.recurringDueDay) };
+  if (debt.cycleStartDate && debt.cycleEndDate) {
+    patch.cycle_start_date = shiftDateKeyByOneMonth(debt.cycleStartDate);
+    patch.cycle_end_date = shiftDateKeyByOneMonth(debt.cycleEndDate);
+  }
+  const { error } = await supabase.from('debts').update(patch).eq('id', debt.id);
+  if (error) throw new Error('เริ่มรอบใหม่ไม่สำเร็จ');
+  await recalculateAmountPaidThisCycle(debt.id);
 }

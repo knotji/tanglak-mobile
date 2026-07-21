@@ -14,13 +14,24 @@ import {
   IonSpinner,
   IonText,
   IonTextarea,
+  IonToast,
   IonToolbar,
   useIonViewWillEnter,
 } from '@ionic/react';
 import PageHeader from '@/components/PageHeader';
 import FieldLabel from '@/components/FieldLabel';
 import DateField from '@/components/DateField';
-import { getDebtById, createDebt, updateDebt, deleteDebt, type DebtFormInput } from '@/lib/debts';
+import { formatThaiDateLabel } from '@/lib/date';
+import {
+  getDebtById,
+  createDebt,
+  updateDebt,
+  deleteDebt,
+  advanceDebtCycle,
+  previewCycleAdvance,
+  type Debt,
+  type DebtFormInput,
+} from '@/lib/debts';
 
 const EMPTY: DebtFormInput = {
   name: '',
@@ -47,38 +58,45 @@ const DebtFormPage: React.FC = () => {
   const isEdit = Boolean(id);
   const history = useHistory();
   const [form, setForm] = useState<DebtFormInput>(EMPTY);
+  const [debt, setDebt] = useState<Debt | null>(null);
   const [loading, setLoading] = useState(isEdit);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmAdvance, setConfirmAdvance] = useState(false);
+
+  const loadDebt = (debtId: string) =>
+    getDebtById(debtId).then((loaded) => {
+      if (!loaded) {
+        setNotFound(true);
+        return;
+      }
+      setDebt(loaded);
+      setForm({
+        name: loaded.name,
+        creditor: loaded.creditor ?? '',
+        outstanding: loaded.outstandingBalanceSatang !== null ? String(loaded.outstandingBalanceSatang / 100) : '',
+        amountDue: loaded.amountDueSatang !== null ? String(loaded.amountDueSatang / 100) : '',
+        minimum: loaded.minimumPaymentSatang !== null ? String(loaded.minimumPaymentSatang / 100) : '',
+        dueDate: loaded.dueDate ?? '',
+        recurringDueDay: loaded.recurringDueDay !== null ? String(loaded.recurringDueDay) : '',
+        paymentMode: loaded.paymentMode,
+        interestRateAnnual: loaded.interestRateAnnual !== null ? String(loaded.interestRateAnnual) : '',
+        notes: loaded.notes ?? '',
+      });
+    });
 
   useIonViewWillEnter(() => {
     if (!id) {
       setForm(EMPTY);
+      setDebt(null);
       setLoading(false);
       return;
     }
     setLoading(true);
-    void getDebtById(id)
-      .then((debt) => {
-        if (!debt) {
-          setNotFound(true);
-          return;
-        }
-        setForm({
-          name: debt.name,
-          creditor: debt.creditor ?? '',
-          outstanding: debt.outstandingBalanceSatang !== null ? String(debt.outstandingBalanceSatang / 100) : '',
-          amountDue: debt.amountDueSatang !== null ? String(debt.amountDueSatang / 100) : '',
-          minimum: debt.minimumPaymentSatang !== null ? String(debt.minimumPaymentSatang / 100) : '',
-          dueDate: debt.dueDate ?? '',
-          recurringDueDay: debt.recurringDueDay !== null ? String(debt.recurringDueDay) : '',
-          paymentMode: debt.paymentMode,
-          interestRateAnnual: debt.interestRateAnnual !== null ? String(debt.interestRateAnnual) : '',
-          notes: debt.notes ?? '',
-        });
-      })
+    void loadDebt(id)
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'โหลดข้อมูลหนี้ไม่สำเร็จ'))
       .finally(() => setLoading(false));
   });
@@ -109,6 +127,23 @@ const DebtFormPage: React.FC = () => {
       setConfirmDelete(false);
     }
   };
+
+  const handleAdvanceCycle = async () => {
+    if (!debt) return;
+    setConfirmAdvance(false);
+    setBusy(true);
+    try {
+      await advanceDebtCycle(debt);
+      await loadDebt(debt.id);
+      setNotice('เริ่มรอบใหม่แล้ว');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'เริ่มรอบใหม่ไม่สำเร็จ');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const advancePreview = debt ? previewCycleAdvance(debt) : null;
 
   return (
     <IonPage>
@@ -200,6 +235,11 @@ const DebtFormPage: React.FC = () => {
             <IonButton expand="block" className="ion-margin-top" disabled={busy} onClick={() => void handleSave()}>
               {busy ? <IonSpinner name="dots" /> : 'บันทึกหนี้'}
             </IonButton>
+            {isEdit && advancePreview && (
+              <IonButton expand="block" fill="outline" disabled={busy} onClick={() => setConfirmAdvance(true)}>
+                เริ่มรอบใหม่
+              </IonButton>
+            )}
             {isEdit && (
               <IonButton expand="block" fill="clear" color="danger" disabled={busy} onClick={() => setConfirmDelete(true)}>
                 ลบหนี้นี้
@@ -217,6 +257,23 @@ const DebtFormPage: React.FC = () => {
             { text: 'ลบ', role: 'destructive', handler: () => { void handleDelete(); } },
           ]}
         />
+
+        <IonAlert
+          isOpen={confirmAdvance}
+          onDidDismiss={() => setConfirmAdvance(false)}
+          header="เริ่มรอบใหม่?"
+          message={
+            advancePreview
+              ? `เลื่อนวันครบกำหนดจาก ${formatThaiDateLabel(advancePreview.previousDueDate ?? '') ?? advancePreview.previousDueDate} เป็น ${formatThaiDateLabel(advancePreview.nextDueDate) ?? advancePreview.nextDueDate} และคำนวณยอดจ่ายรอบนี้ใหม่ (ไม่แตะยอดคงเหลือ ต้องแก้เองถ้ายอดเปลี่ยน)`
+              : undefined
+          }
+          buttons={[
+            { text: 'ยกเลิก', role: 'cancel', handler: () => setConfirmAdvance(false) },
+            { text: 'เริ่มรอบใหม่', handler: () => { void handleAdvanceCycle(); } },
+          ]}
+        />
+
+        <IonToast isOpen={notice !== ''} message={notice} duration={2500} color="success" onDidDismiss={() => setNotice('')} />
       </IonContent>
     </IonPage>
   );
