@@ -19,6 +19,7 @@ import {
 } from '@ionic/react';
 import PageHeader from '@/components/PageHeader';
 import FieldLabel from '@/components/FieldLabel';
+import DateField from '@/components/DateField';
 import { getDebtById, createDebt, updateDebt, deleteDebt, type DebtFormInput } from '@/lib/debts';
 
 const EMPTY: DebtFormInput = {
@@ -156,12 +157,7 @@ const DebtFormPage: React.FC = () => {
                 </div>
                 <div>
                   <FieldLabel>ครบกำหนด</FieldLabel>
-                  <input
-                    type="date"
-                    value={form.dueDate}
-                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--tl-border)', fontFamily: 'inherit', fontSize: 16 }}
-                  />
+                  <DateField value={form.dueDate} onChange={(value) => setForm({ ...form, dueDate: value })} />
                 </div>
               </div>
 

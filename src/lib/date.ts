@@ -41,3 +41,15 @@ export function formatThaiDateTimeLabel(value: string): string | null {
   const timeLabel = `${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`;
   return `${dateLabel} เวลา ${timeLabel}`;
 }
+
+/** e.g. "5 ก.ค. 2026" -- date-only counterpart of formatThaiDateTimeLabel, for date (no time) fields like a debt's due date. */
+export function formatThaiDateLabel(dateKey: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return new Intl.DateTimeFormat('th-TH-u-ca-gregory', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+}
