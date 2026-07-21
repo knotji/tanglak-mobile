@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { IonContent, IonHeader, IonPage, IonRefresher, IonRefresherContent, IonSpinner, IonText, IonToolbar, useIonViewWillEnter } from '@ionic/react';
+import { IonContent, IonPage, IonRefresher, IonRefresherContent, IonSpinner, IonText, useIonViewWillEnter } from '@ionic/react';
 import PageHeader from '@/components/PageHeader';
 import TransactionList from '@/components/TransactionList';
 import { listRecentTransactions, type Transaction } from '@/lib/transactions';
@@ -25,7 +25,6 @@ const TransactionsPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonHeader className="ion-no-border"><IonToolbar /></IonHeader>
       <IonContent className="ion-padding" fullscreen>
         <IonRefresher slot="fixed" onIonRefresh={(e) => void load(e)}>
           <IonRefresherContent />

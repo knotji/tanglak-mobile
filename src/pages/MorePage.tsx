@@ -1,4 +1,4 @@
-import { IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonPage, IonToolbar } from '@ionic/react';
+import { IonContent, IonIcon, IonItem, IonLabel, IonList, IonPage } from '@ionic/react';
 import { cardOutline, chevronForwardOutline, settingsOutline, statsChartOutline, walletOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
@@ -8,7 +8,6 @@ const MorePage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonHeader className="ion-no-border"><IonToolbar /></IonHeader>
       <IonContent className="ion-padding" fullscreen>
         <PageHeader title="เพิ่มเติม" />
         <IonList className="tl-card" style={{ padding: 0 }} lines="full">

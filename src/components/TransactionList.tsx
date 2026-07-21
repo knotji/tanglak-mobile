@@ -13,19 +13,24 @@ interface TransactionListProps {
 const TransactionList: React.FC<TransactionListProps> = ({ transactions, onChanged }) => {
   const history = useHistory();
   const [active, setActive] = useState<Transaction | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  // Separate from `active`: the action sheet's onDidDismiss fires (and
+  // clears `active`) the instant its own isOpen flips to false, which
+  // happens as soon as "ลบรายการนี้" is tapped (isOpen depends on
+  // pendingDelete being unset). Without this second piece of state, that
+  // dismiss-driven clear raced ahead of the alert's own delete handler,
+  // so handleDelete always saw active === null and silently no-opped.
+  const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
   const [busy, setBusy] = useState(false);
 
   const handleDelete = async () => {
-    if (!active) return;
+    if (!pendingDelete) return;
     setBusy(true);
     try {
-      await deleteTransaction(active.id);
+      await deleteTransaction(pendingDelete.id);
       onChanged();
     } finally {
       setBusy(false);
-      setConfirmDelete(false);
-      setActive(null);
+      setPendingDelete(null);
     }
   };
 
@@ -42,24 +47,25 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onChang
       </div>
 
       <IonActionSheet
-        isOpen={active !== null && !confirmDelete}
+        isOpen={active !== null && pendingDelete === null}
         onDidDismiss={() => setActive(null)}
         header={active?.merchant || active?.categoryLabel || 'รายการ'}
         buttons={[
           ...(active && active.type !== 'debt_payment'
             ? [{ text: 'แก้ไข', handler: () => history.push(`/transactions/${active.id}/edit`) }]
             : []),
-          { text: 'ลบรายการนี้', role: 'destructive', handler: () => setConfirmDelete(true) },
+          { text: 'ลบรายการนี้', role: 'destructive', handler: () => setPendingDelete(active) },
           { text: 'ยกเลิก', role: 'cancel' },
         ]}
       />
 
       <IonAlert
-        isOpen={confirmDelete}
+        isOpen={pendingDelete !== null}
+        onDidDismiss={() => setPendingDelete(null)}
         header="ลบรายการนี้?"
         message="ลบแล้วกู้คืนไม่ได้"
         buttons={[
-          { text: 'ยกเลิก', role: 'cancel', handler: () => { setConfirmDelete(false); setActive(null); } },
+          { text: 'ยกเลิก', role: 'cancel', handler: () => setPendingDelete(null) },
           { text: busy ? 'กำลังลบ…' : 'ลบ', role: 'destructive', handler: () => { void handleDelete(); } },
         ]}
       />

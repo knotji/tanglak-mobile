@@ -3,14 +3,12 @@ import {
   IonContent,
   IonFab,
   IonFabButton,
-  IonHeader,
   IonIcon,
   IonPage,
   IonRefresher,
   IonRefresherContent,
   IonSpinner,
   IonText,
-  IonToolbar,
   useIonViewWillEnter,
 } from '@ionic/react';
 import { addOutline } from 'ionicons/icons';
@@ -41,7 +39,6 @@ const DebtsPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonHeader className="ion-no-border"><IonToolbar /></IonHeader>
       <IonContent className="ion-padding" fullscreen>
         <IonRefresher slot="fixed" onIonRefresh={(e) => void load(e)}>
           <IonRefresherContent />

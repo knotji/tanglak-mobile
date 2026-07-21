@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   IonButton,
   IonContent,
-  IonHeader,
   IonIcon,
   IonInput,
   IonPage,
@@ -12,7 +11,6 @@ import {
   IonSelectOption,
   IonSpinner,
   IonText,
-  IonToolbar,
   useIonViewWillEnter,
 } from '@ionic/react';
 import { cameraOutline, checkmarkCircle } from 'ionicons/icons';
@@ -177,7 +175,6 @@ const UploadPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonHeader className="ion-no-border"><IonToolbar /></IonHeader>
       <IonContent className="ion-padding" fullscreen>
         <PageHeader title="สแกนสลิป" subtitle="ถ่ายรูปสลิปให้ AI อ่านข้อมูลให้" />
 

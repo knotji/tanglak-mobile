@@ -93,7 +93,14 @@ ion-header ion-toolbar > ion-button {
 /* --- Shared page-content building blocks --- */
 
 .tl-page-header {
-  padding: 4px 4px 18px;
+  /* Tab-root pages (Today/Transactions/Debts/Upload/More) have no
+     IonHeader at all -- an empty <IonToolbar/> used to stand in just to
+     reserve safe-area space, but its default ~44-56px min-height showed
+     as a pointless blank bar on any non-notched screen (i.e. most
+     testing). env(safe-area-inset-top) reserves real notch space only
+     where a notch actually exists, so this collapses to the plain 4px on
+     everything else. */
+  padding: max(4px, env(safe-area-inset-top)) 4px 18px;
 }
 .tl-page-header .tl-brand {
   font-size: 13px;
