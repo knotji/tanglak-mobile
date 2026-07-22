@@ -13,7 +13,7 @@ import {
   IonText,
   useIonViewWillEnter,
 } from '@ionic/react';
-import { cameraOutline, checkmarkCircle } from 'ionicons/icons';
+import { cameraOutline, checkmarkCircle, imagesOutline } from 'ionicons/icons';
 import { extractDocument, type ExtractedFinancialDocument } from '@/lib/documentUpload';
 import { saveTransaction, type SaveTransactionInput } from '@/lib/saveTransaction';
 import { addDebtPayment } from '@/lib/addDebtPayment';
@@ -25,16 +25,6 @@ import PageHeader from '@/components/PageHeader';
 import FieldLabel from '@/components/FieldLabel';
 import DateTimeField from '@/components/DateTimeField';
 
-const DOCUMENT_TYPE_LABEL: Record<string, string> = {
-  salary_slip: 'สลิปเงินเดือน',
-  transfer_slip: 'สลิปโอนเงิน',
-  receipt: 'ใบเสร็จ',
-  delivery_receipt: 'ใบเสร็จเดลิเวอรี',
-  debt_statement: 'ใบแจ้งหนี้',
-  loan_schedule: 'ตารางผ่อนชำระ',
-  other: 'เอกสารอื่น ๆ',
-};
-
 type SavableType = 'expense' | 'income' | 'transfer' | 'refund' | 'debt_payment';
 
 interface DraftForm {
@@ -44,6 +34,13 @@ interface DraftForm {
   datetimeLocal: string;
   categoryId: string;
   debtId: string;
+}
+
+/** One slip queued up for review -- built once, right after extraction, and never mutated in place; the currently-edited copy lives in `draft` while its index is active. */
+interface QueueEntry {
+  previewUrl?: string;
+  draft: DraftForm;
+  unclearFields: string[];
 }
 
 function datetimeLocalToIso(value: string): string {
@@ -64,8 +61,17 @@ function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
   };
 }
 
+function emptyDraft(): DraftForm {
+  return { type: 'expense', amount: '', merchant: '', datetimeLocal: nowBangkokDatetimeLocal(), categoryId: '', debtId: '' };
+}
+
 const UploadPage: React.FC = () => {
   const [step, setStep] = useState<'pick' | 'extracting' | 'review' | 'saving' | 'saved'>('pick');
+  const [queue, setQueue] = useState<QueueEntry[]>([]);
+  const [queueIndex, setQueueIndex] = useState(0);
+  const [extractProgress, setExtractProgress] = useState({ done: 0, total: 0 });
+  const [savedCount, setSavedCount] = useState(0);
+  const [notSavedCount, setNotSavedCount] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [unclearFields, setUnclearFields] = useState<string[]>([]);
@@ -77,7 +83,15 @@ const UploadPage: React.FC = () => {
   });
 
   const reset = () => {
+    for (const entry of queue) {
+      if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
+    }
     setStep('pick');
+    setQueue([]);
+    setQueueIndex(0);
+    setExtractProgress({ done: 0, total: 0 });
+    setSavedCount(0);
+    setNotSavedCount(0);
     setPreviewUrl(null);
     setError('');
     setUnclearFields([]);
@@ -94,33 +108,60 @@ const UploadPage: React.FC = () => {
     if (step === 'saved') reset();
   }, [step]);
 
-  const handleFile = async (file: File) => {
+  const enterQueueItem = (index: number, nextQueue: QueueEntry[] = queue) => {
+    const entry = nextQueue[index];
+    setQueueIndex(index);
+    setDraft(entry.draft);
+    setUnclearFields(entry.unclearFields);
+    setPreviewUrl(entry.previewUrl ?? null);
     setError('');
-    setPreviewUrl(URL.createObjectURL(file));
-    setStep('extracting');
-    try {
-      const result = await extractDocument(file);
-      setDraft(draftFromExtraction(result));
-      setUnclearFields(result.unclearFields);
-      setStep('review');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'อ่านสลิปไม่สำเร็จ');
-      setStep('pick');
+    setStep('review');
+  };
+
+  /** Called after a save or a skip: moves to the next queued slip, or finishes the batch. */
+  const advanceQueue = () => {
+    const next = queueIndex + 1;
+    if (next < queue.length) {
+      enterQueueItem(next);
+    } else {
+      setStep('saved');
     }
   };
 
-  const handleManualEntry = () => {
+  const handleFiles = async (files: File[]) => {
+    if (files.length === 0) return;
     setError('');
-    setUnclearFields([]);
-    setDraft({
-      type: 'expense',
-      amount: '',
-      merchant: '',
-      datetimeLocal: nowBangkokDatetimeLocal(),
-      categoryId: '',
-      debtId: '',
-    });
-    setStep('review');
+    setStep('extracting');
+    setExtractProgress({ done: 0, total: files.length });
+
+    const entries: QueueEntry[] = [];
+    let failCount = 0;
+    for (let i = 0; i < files.length; i++) {
+      const url = URL.createObjectURL(files[i]);
+      try {
+        const result = await extractDocument(files[i]);
+        entries.push({ previewUrl: url, draft: draftFromExtraction(result), unclearFields: result.unclearFields });
+      } catch {
+        failCount += 1;
+        URL.revokeObjectURL(url);
+      }
+      setExtractProgress({ done: i + 1, total: files.length });
+    }
+
+    if (entries.length === 0) {
+      setError(files.length > 1 ? 'อ่านสลิปทั้งหมดไม่สำเร็จ' : 'อ่านสลิปไม่สำเร็จ');
+      setStep('pick');
+      return;
+    }
+    setNotSavedCount(failCount);
+    setQueue(entries);
+    enterQueueItem(0, entries);
+  };
+
+  const handleManualEntry = () => {
+    const entry: QueueEntry = { draft: emptyDraft(), unclearFields: [] };
+    setQueue([entry]);
+    enterQueueItem(0, [entry]);
   };
 
   const handleSave = async () => {
@@ -155,27 +196,35 @@ const UploadPage: React.FC = () => {
         };
         await saveTransaction(input);
       }
-      setStep('saved');
+      setSavedCount((count) => count + 1);
+      advanceQueue();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'บันทึกรายการไม่สำเร็จ');
       setStep('review');
     }
   };
 
+  const handleSkip = () => {
+    setNotSavedCount((count) => count + 1);
+    advanceQueue();
+  };
+
   const categoryOptionsForType = CATEGORY_OPTIONS.filter((option) =>
     draft?.type === 'income' ? option.kind === 'income' : option.kind === 'expense',
   );
 
+  const isBatch = queue.length > 1;
+
   return (
     <IonPage>
       <IonContent className="ion-padding" fullscreen>
-        <PageHeader title="สแกนสลิป" subtitle="ถ่ายรูปสลิปให้ AI อ่านข้อมูลให้" />
+        <PageHeader title="สแกนสลิป" subtitle="ถ่ายรูปสลิปให้ AI อ่านข้อมูลให้ ทีละใบหรือหลายใบพร้อมกันก็ได้" />
 
         {step === 'pick' && (
           <>
             <label className="upload-picker">
               <IonIcon icon={cameraOutline} style={{ fontSize: 32 }} />
-              <p>ถ่ายรูปหรือเลือกสลิป</p>
+              <p>ถ่ายรูปสลิป</p>
               <input
                 type="file"
                 accept="image/*"
@@ -184,7 +233,22 @@ const UploadPage: React.FC = () => {
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   event.target.value = '';
-                  if (file) void handleFile(file);
+                  if (file) void handleFiles([file]);
+                }}
+              />
+            </label>
+            <label className="upload-picker" style={{ marginTop: 12 }}>
+              <IonIcon icon={imagesOutline} style={{ fontSize: 32 }} />
+              <p>เลือกหลายรูปจากคลังภาพ</p>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: 'none' }}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  event.target.value = '';
+                  if (files.length) void handleFiles(files);
                 }}
               />
             </label>
@@ -201,15 +265,28 @@ const UploadPage: React.FC = () => {
 
         {step === 'extracting' && (
           <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
-            {previewUrl && <img src={previewUrl} alt="" style={{ width: '100%', borderRadius: 12, marginBottom: 16 }} />}
             <IonSpinner />
-            <p style={{ marginTop: 8, color: 'var(--tl-text-secondary)' }}>กำลังอ่านข้อมูลจากสลิป…</p>
+            <p style={{ marginTop: 8, color: 'var(--tl-text-secondary)' }}>
+              กำลังอ่านข้อมูลจากสลิป…
+              {extractProgress.total > 1 && ` (${Math.min(extractProgress.done + 1, extractProgress.total)}/${extractProgress.total})`}
+            </p>
           </div>
         )}
 
         {(step === 'review' || step === 'saving') && draft && (
           <>
             <div className="tl-card">
+              {isBatch && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  {previewUrl && (
+                    <img src={previewUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                  )}
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tl-text-secondary)' }}>
+                    รายการที่ {queueIndex + 1} จาก {queue.length}
+                  </span>
+                </div>
+              )}
+
               <IonSegment
                 value={draft.type}
                 onIonChange={(e) => setDraft({ ...draft, type: e.detail.value as SavableType, categoryId: '', debtId: '' })}
@@ -236,7 +313,7 @@ const UploadPage: React.FC = () => {
                   <FieldLabel>หนี้ที่จะจ่าย</FieldLabel>
                   {debts.length === 0 ? (
                     <p style={{ fontSize: 13, color: 'var(--tl-text-secondary)' }}>
-                      ยังไม่มีรายการหนี้ในระบบ — เพิ่มหนี้ผ่านเว็บตั้งหลักก่อน (แอปมือถือยังไม่มีหน้าเพิ่มหนี้)
+                      ยังไม่มีรายการหนี้ในระบบ — เพิ่มหนี้ในแท็บ &quot;หนี้สิน&quot; ก่อน
                     </p>
                   ) : (
                     <IonSelect
@@ -296,10 +373,15 @@ const UploadPage: React.FC = () => {
             )}
 
             <IonButton expand="block" className="ion-margin-top" disabled={step === 'saving'} onClick={handleSave}>
-              {step === 'saving' ? <IonSpinner name="dots" /> : 'บันทึกรายการ'}
+              {step === 'saving' ? <IonSpinner name="dots" /> : isBatch && queueIndex < queue.length - 1 ? 'บันทึกแล้วไปต่อ' : 'บันทึกรายการ'}
             </IonButton>
+            {isBatch && (
+              <IonButton expand="block" fill="outline" disabled={step === 'saving'} onClick={handleSkip}>
+                ข้ามรายการนี้
+              </IonButton>
+            )}
             <IonButton expand="block" fill="clear" disabled={step === 'saving'} onClick={reset}>
-              ยกเลิก
+              {isBatch ? 'ยกเลิกทั้งหมด' : 'ยกเลิก'}
             </IonButton>
           </>
         )}
@@ -307,9 +389,13 @@ const UploadPage: React.FC = () => {
         {step === 'saved' && (
           <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
             <IonIcon icon={checkmarkCircle} color="success" style={{ fontSize: 48 }} />
-            <p style={{ fontWeight: 700, marginTop: 12 }}>บันทึกรายการแล้ว</p>
+            <p style={{ fontWeight: 700, marginTop: 12 }}>
+              {savedCount > 1 || notSavedCount > 0
+                ? `บันทึกแล้ว ${savedCount} รายการ${notSavedCount > 0 ? ` · ไม่ได้บันทึก ${notSavedCount} รายการ` : ''}`
+                : 'บันทึกรายการแล้ว'}
+            </p>
             <IonButton expand="block" className="ion-margin-top" onClick={reset}>
-              สแกนสลิปอีกใบ
+              สแกนสลิปอีก
             </IonButton>
           </div>
         )}
