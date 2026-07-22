@@ -235,6 +235,11 @@ const DebtFormPage: React.FC = () => {
             <IonButton expand="block" className="ion-margin-top" disabled={busy} onClick={() => void handleSave()}>
               {busy ? <IonSpinner name="dots" /> : 'บันทึกหนี้'}
             </IonButton>
+            {isEdit && id && (
+              <IonButton expand="block" fill="outline" disabled={busy} onClick={() => history.push(`/debts/${id}/simulate`)}>
+                วางแผนจ่ายหนี้
+              </IonButton>
+            )}
             {isEdit && advancePreview && (
               <IonButton expand="block" fill="outline" disabled={busy} onClick={() => setConfirmAdvance(true)}>
                 เริ่มรอบใหม่
