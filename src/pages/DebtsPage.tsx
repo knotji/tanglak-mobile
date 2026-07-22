@@ -11,11 +11,12 @@ import {
   IonText,
   useIonViewWillEnter,
 } from '@ionic/react';
-import { addOutline } from 'ionicons/icons';
+import { addOutline, chevronForwardOutline, trendingUpOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import DebtCard from '@/components/DebtCard';
 import { listDebts, type Debt } from '@/lib/debts';
+import { filterActiveDebts } from '@/lib/debtPortfolioStrategy';
 
 const DebtsPage: React.FC = () => {
   const history = useHistory();
@@ -53,6 +54,19 @@ const DebtsPage: React.FC = () => {
         )}
 
         {error && <IonText color="danger"><p>{error}</p></IonText>}
+
+        {debts && filterActiveDebts(debts).length >= 2 && (
+          <button type="button" className="tl-tap-row" onClick={() => history.push('/debts/strategy')} style={{ marginBottom: 12 }}>
+            <div className="tl-card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <IonIcon icon={trendingUpOutline} color="primary" style={{ fontSize: 22, flexShrink: 0 }} />
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>เทียบกลยุทธ์ผ่อนหนี้</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)' }}>ควรโปะหนี้ก้อนไหนก่อน ระหว่างปิดก้อนเล็กกับลดดอกเบี้ย</p>
+              </div>
+              <IonIcon icon={chevronForwardOutline} color="medium" style={{ fontSize: 16, opacity: 0.6 }} />
+            </div>
+          </button>
+        )}
 
         {debts?.length === 0 && (
           <div className="tl-card tl-empty">

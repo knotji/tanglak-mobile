@@ -11,6 +11,7 @@ import AccountsPage from '@/pages/AccountsPage';
 import EditTransactionPage from '@/pages/EditTransactionPage';
 import DebtFormPage from '@/pages/DebtFormPage';
 import DebtSimulatePage from '@/pages/DebtSimulatePage';
+import DebtStrategyPage from '@/pages/DebtStrategyPage';
 import BudgetEditPage from '@/pages/BudgetEditPage';
 
 import '@ionic/react/css/core.css';
@@ -95,6 +96,9 @@ const App: React.FC = () => {
               </Route>
               <Route exact path="/debts/:id/simulate">
                 {session ? <DebtSimulatePage /> : <Redirect to="/login" />}
+              </Route>
+              <Route exact path="/debts/strategy">
+                {session ? <DebtStrategyPage /> : <Redirect to="/login" />}
               </Route>
               <Route exact path="/budget/edit">
                 {session ? <BudgetEditPage /> : <Redirect to="/login" />}
