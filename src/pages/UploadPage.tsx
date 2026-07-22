@@ -11,6 +11,7 @@ import {
   IonSelectOption,
   IonSpinner,
   IonText,
+  IonToggle,
   useIonViewWillEnter,
 } from '@ionic/react';
 import { cameraOutline, checkmarkCircle, imagesOutline } from 'ionicons/icons';
@@ -77,6 +78,7 @@ const UploadPage: React.FC = () => {
   const [unclearFields, setUnclearFields] = useState<string[]>([]);
   const [draft, setDraft] = useState<DraftForm | null>(null);
   const [debts, setDebts] = useState<Debt[]>([]);
+  const [autoSave, setAutoSave] = useState(false);
 
   useIonViewWillEnter(() => {
     void listDebts().then(setDebts).catch(() => setDebts([]));
@@ -128,6 +130,39 @@ const UploadPage: React.FC = () => {
     }
   };
 
+  /** Same validation + save logic as handleSave, but against a queue entry's
+   * own draft directly instead of the component's editable `draft` state --
+   * used by auto-save, which never puts an entry through the review form.
+   * A missing amount/date/debt is not something auto-save can fill in on
+   * its own, so those entries just come back false (counted as not-saved)
+   * rather than blocking on a review screen the user asked to skip. */
+  const saveEntry = async (entry: QueueEntry): Promise<boolean> => {
+    const entryDraft = entry.draft;
+    const amountNumber = Number(entryDraft.amount);
+    if (!entryDraft.amount || !Number.isFinite(amountNumber) || amountNumber <= 0) return false;
+    const occurredAt = datetimeLocalToIso(entryDraft.datetimeLocal);
+    if (!occurredAt) return false;
+    if (entryDraft.type === 'debt_payment' && !entryDraft.debtId) return false;
+    try {
+      if (entryDraft.type === 'debt_payment') {
+        await addDebtPayment({ debtId: entryDraft.debtId, amount: amountNumber, occurredAt });
+      } else {
+        const category = CATEGORY_OPTIONS.find((option) => option.id === entryDraft.categoryId);
+        const input: SaveTransactionInput = {
+          type: entryDraft.type,
+          amount: amountNumber,
+          occurredAt,
+          merchant: entryDraft.merchant || undefined,
+          categoryLabel: category?.label,
+        };
+        await saveTransaction(input);
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     setError('');
@@ -153,6 +188,22 @@ const UploadPage: React.FC = () => {
       setStep('pick');
       return;
     }
+
+    if (autoSave) {
+      setStep('saving');
+      let saved = 0;
+      let notSaved = failCount;
+      for (const entry of entries) {
+        if (await saveEntry(entry)) saved += 1; else notSaved += 1;
+        if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
+      }
+      setSavedCount(saved);
+      setNotSavedCount(notSaved);
+      setQueue([]);
+      setStep('saved');
+      return;
+    }
+
     setNotSavedCount(failCount);
     setQueue(entries);
     enterQueueItem(0, entries);
@@ -222,6 +273,20 @@ const UploadPage: React.FC = () => {
 
         {step === 'pick' && (
           <>
+            <div className="tl-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>บันทึกอัตโนมัติ</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)' }}>
+                  ข้ามหน้าตรวจสอบ บันทึกทันทีตามที่ AI อ่านได้ (รายการที่ข้อมูลไม่ครบจะไม่ถูกบันทึก)
+                </p>
+              </div>
+              <IonToggle
+                checked={autoSave}
+                onIonChange={(e) => setAutoSave(e.detail.checked)}
+                aria-label="บันทึกอัตโนมัติ"
+                style={{ flexShrink: 0 }}
+              />
+            </div>
             <label className="upload-picker">
               <IonIcon icon={cameraOutline} style={{ fontSize: 32 }} />
               <p>ถ่ายรูปสลิป</p>
@@ -270,6 +335,13 @@ const UploadPage: React.FC = () => {
               กำลังอ่านข้อมูลจากสลิป…
               {extractProgress.total > 1 && ` (${Math.min(extractProgress.done + 1, extractProgress.total)}/${extractProgress.total})`}
             </p>
+          </div>
+        )}
+
+        {step === 'saving' && !draft && (
+          <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
+            <IonSpinner />
+            <p style={{ marginTop: 8, color: 'var(--tl-text-secondary)' }}>กำลังบันทึกรายการ…</p>
           </div>
         )}
 
