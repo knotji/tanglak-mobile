@@ -51,12 +51,28 @@
   --tl-overdue: #c23b2e;
   --tl-muted: #eef1f5;
   --tl-focus-ring: #2856c7;
+  --tl-input-border: #c7cbd6;
   --tl-radius: 16px;
   --tl-radius-sm: 12px;
 }
 
 ion-content {
   --background: var(--ion-background-color);
+}
+
+/* IonInput/IonSelect/IonTextarea's fill="outline" had never been themed --
+   every form field in the app was rendering Ionic's stock MD look (sharp
+   4px corners, flat --border-color: #b3b3b3), clashing with the app's own
+   soft 12-16px-radius card language everywhere else. --border-radius/
+   --border-color/--highlight-color are Ionic's own documented theming
+   hooks for these components (not internal implementation detail), so this
+   overrides them directly rather than fighting the shadow DOM. */
+ion-input[fill="outline"],
+ion-select[fill="outline"],
+ion-textarea[fill="outline"] {
+  --border-radius: var(--tl-radius-sm);
+  --border-color: var(--tl-input-border);
+  --highlight-color: var(--tl-focus-ring);
 }
 
 .main-tab-bar {
@@ -203,14 +219,11 @@ ion-modal.tl-compact-modal .ion-page {
 
 /* DateField/DateTimeField's trigger is a plain <button> standing in for an
    IonInput/IonSelect (no native date/time picker is used anywhere in this
-   app -- see DateTimeField's own comment). It used to have its own
-   hand-picked padding/radius/border, which didn't match Ionic's actual
-   fill="outline" rendering (min-height 56px, --border-radius 4px,
-   --border-color #b3b3b3) -- most visible on DebtFormPage, where this
-   button sits directly beside a real IonInput in the same grid row and the
-   two didn't line up. Values below are copied from Ionic's own input/
-   select .md.css outline-fill tokens, not invented, so this button is
-   pixel-equivalent to its native siblings. */
+   app -- see DateTimeField's own comment). Matches the themed
+   fill="outline" tokens above (--tl-radius-sm / --tl-input-border), not
+   Ionic's raw stock values, so it still lines up with its native siblings
+   after those got themed too -- most visible on DebtFormPage, where this
+   button sits directly beside a real IonInput in the same grid row. */
 .tl-field-trigger {
   display: flex;
   align-items: center;
@@ -218,8 +231,8 @@ ion-modal.tl-compact-modal .ion-page {
   min-height: 56px;
   text-align: left;
   padding: 0 16px;
-  border-radius: 4px;
-  border: 1px solid #b3b3b3;
+  border-radius: var(--tl-radius-sm);
+  border: 1px solid var(--tl-input-border);
   background: var(--tl-surface);
   font-family: inherit;
   font-size: 16px;
