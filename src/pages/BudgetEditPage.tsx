@@ -12,7 +12,6 @@ import {
   IonSelect,
   IonSelectOption,
   IonSpinner,
-  IonText,
   IonToast,
   IonToolbar,
   useIonViewWillEnter,
