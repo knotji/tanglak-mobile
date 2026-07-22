@@ -200,3 +200,27 @@ ion-modal.tl-compact-modal .ion-page {
   display: block;
   contain: content;
 }
+
+/* DateField/DateTimeField's trigger is a plain <button> standing in for an
+   IonInput/IonSelect (no native date/time picker is used anywhere in this
+   app -- see DateTimeField's own comment). It used to have its own
+   hand-picked padding/radius/border, which didn't match Ionic's actual
+   fill="outline" rendering (min-height 56px, --border-radius 4px,
+   --border-color #b3b3b3) -- most visible on DebtFormPage, where this
+   button sits directly beside a real IonInput in the same grid row and the
+   two didn't line up. Values below are copied from Ionic's own input/
+   select .md.css outline-fill tokens, not invented, so this button is
+   pixel-equivalent to its native siblings. */
+.tl-field-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  text-align: left;
+  padding: 0 16px;
+  border-radius: 4px;
+  border: 1px solid #b3b3b3;
+  background: var(--tl-surface);
+  font-family: inherit;
+  font-size: 16px;
+}

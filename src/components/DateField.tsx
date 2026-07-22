@@ -16,21 +16,7 @@ const DateField: React.FC<DateFieldProps> = ({ value, onChange, placeholder = 'à
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        style={{
-          width: '100%',
-          textAlign: 'left',
-          padding: '10px 12px',
-          borderRadius: 8,
-          border: '1px solid var(--tl-border)',
-          background: 'var(--tl-surface)',
-          fontFamily: 'inherit',
-          fontSize: 16,
-          color: label ? 'var(--ion-text-color)' : 'var(--tl-text-secondary)',
-        }}
-      >
+      <button type="button" onClick={() => setOpen(true)} className="tl-field-trigger" style={{ color: label ? 'var(--ion-text-color)' : 'var(--tl-text-secondary)' }}>
         {label ?? placeholder}
       </button>
 
