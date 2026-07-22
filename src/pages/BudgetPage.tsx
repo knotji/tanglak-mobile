@@ -83,26 +83,33 @@ const BudgetPage: React.FC = () => {
 
         {summary && (summary.hasBudget || summary.categories.length > 0) && (
           <>
-            <div className="tl-card" style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 700 }}>ใช้ไปแล้ว</p>
-                <p className="tl-amount tl-amount--expense" style={{ fontSize: 22, margin: '4px 0 0' }}>{formatTHB(summary.spentTotalSatang)}</p>
-              </div>
-              {summary.plannedTotalSatang > 0 && (
+            <div className="tl-hero-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 700 }}>คงเหลือจากงบ</p>
-                  <p
-                    className={`tl-amount ${summary.remainingTotalSatang < 0 ? 'tl-amount--overdue' : 'tl-amount--income'}`}
-                    style={{ fontSize: 22, margin: '4px 0 0' }}
-                  >
-                    {formatTHB(summary.remainingTotalSatang)}
-                  </p>
+                  <span className="tl-hero-title">ใช้ไปแล้วเดือนนี้</span>
+                  <div className="tl-hero-amount">{formatTHB(summary.spentTotalSatang)}</div>
                 </div>
-              )}
+                {summary.plannedTotalSatang > 0 && (
+                  <div style={{ textAlign: 'right' }}>
+                    <span className="tl-hero-title">คงเหลือจากงบ</span>
+                    <div
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 800,
+                        marginTop: 4,
+                        color: summary.remainingTotalSatang < 0 ? '#f87171' : '#34d399',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {formatTHB(summary.remainingTotalSatang)}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {summary.categories.length > 0 && (
-              <div className="tl-card" style={{ padding: '4px 16px' }}>
+              <div className="tl-card" style={{ padding: '6px 18px', marginTop: 14 }}>
                 {summary.categories.map((category, index) => (
                   <div key={category.label} style={{ borderTop: index === 0 ? 'none' : '1px solid var(--tl-border)' }}>
                     <CategoryRow category={category} />

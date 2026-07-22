@@ -232,23 +232,84 @@ const DebtFormPage: React.FC = () => {
               <IonText color="danger"><p className="ion-margin-top">{error}</p></IonText>
             )}
 
-            <IonButton expand="block" className="ion-margin-top" disabled={busy} onClick={() => void handleSave()}>
+            <IonButton
+              expand="block"
+              className="ion-margin-top"
+              disabled={busy}
+              onClick={() => void handleSave()}
+              style={{
+                '--border-radius': '999px',
+                '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)',
+                '--box-shadow': '0 8px 20px -4px rgba(15, 23, 42, 0.3)',
+                fontWeight: 700,
+                fontSize: 15,
+                minHeight: 50,
+              }}
+            >
               {busy ? <IonSpinner name="dots" /> : 'บันทึกหนี้'}
             </IonButton>
             {isEdit && id && (
-              <IonButton expand="block" fill="outline" disabled={busy} onClick={() => history.push(`/debts/${id}/simulate`)}>
+              <IonButton
+                expand="block"
+                fill="outline"
+                disabled={busy}
+                onClick={() => history.push(`/debts/${id}/simulate`)}
+                style={{
+                  '--border-radius': '999px',
+                  '--border-color': '#cbd5e1',
+                  '--color': '#0f172a',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  minHeight: 46,
+                  marginTop: 10,
+                }}
+              >
                 วางแผนจ่ายหนี้
               </IonButton>
             )}
             {isEdit && advancePreview && (
-              <IonButton expand="block" fill="outline" disabled={busy} onClick={() => setConfirmAdvance(true)}>
+              <IonButton
+                expand="block"
+                fill="outline"
+                disabled={busy}
+                onClick={() => setConfirmAdvance(true)}
+                style={{
+                  '--border-radius': '999px',
+                  '--border-color': '#cbd5e1',
+                  '--color': '#0f172a',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  minHeight: 46,
+                  marginTop: 8,
+                }}
+              >
                 เริ่มรอบใหม่
               </IonButton>
             )}
             {isEdit && (
-              <IonButton expand="block" fill="clear" color="danger" disabled={busy} onClick={() => setConfirmDelete(true)}>
-                ลบหนี้นี้
-              </IonButton>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setConfirmDelete(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ef4444',
+                  fontFamily: 'inherit',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  padding: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                  width: '100%',
+                  marginTop: 6,
+                }}
+              >
+                <span>ลบหนี้นี้</span>
+              </button>
             )}
           </>
         )}

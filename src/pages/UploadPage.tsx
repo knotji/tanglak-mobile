@@ -14,7 +14,7 @@ import {
   IonToggle,
   useIonViewWillEnter,
 } from '@ionic/react';
-import { cameraOutline, checkmarkCircle, imagesOutline } from 'ionicons/icons';
+import { cameraOutline, checkmarkCircle, imagesOutline, warningOutline, sparklesOutline } from 'ionicons/icons';
 import { extractDocument, type ExtractedFinancialDocument } from '@/lib/documentUpload';
 import { saveTransaction, type SaveTransactionInput } from '@/lib/saveTransaction';
 import { addDebtPayment } from '@/lib/addDebtPayment';
@@ -22,6 +22,7 @@ import { CATEGORY_OPTIONS } from '@/lib/categories';
 import { listDebts, type Debt } from '@/lib/debts';
 import { nowBangkokDatetimeLocal } from '@/lib/bangkokDate';
 import { isoInstantToBangkokDatetimeLocal } from '@/lib/date';
+import { checkDuplicateTransaction } from '@/lib/transactions';
 import PageHeader from '@/components/PageHeader';
 import FieldLabel from '@/components/FieldLabel';
 import DateTimeField from '@/components/DateTimeField';
@@ -35,6 +36,12 @@ interface DraftForm {
   datetimeLocal: string;
   categoryId: string;
   debtId: string;
+  isDuplicate?: boolean;
+  refNo?: string;
+  bankChannel?: string;
+  senderName?: string;
+  receiverName?: string;
+  memo?: string;
 }
 
 /** One slip queued up for review -- built once, right after extraction, and never mutated in place; the currently-edited copy lives in `draft` while its index is active. */
@@ -59,6 +66,11 @@ function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
     datetimeLocal: result.transaction?.occurredAt ? isoInstantToBangkokDatetimeLocal(result.transaction.occurredAt) : '',
     categoryId: result.transaction?.categoryId ?? '',
     debtId: '',
+    refNo: result.transaction?.refNo,
+    bankChannel: result.transaction?.bankChannel ?? result.transaction?.paymentMethod,
+    senderName: result.transaction?.senderName,
+    receiverName: result.transaction?.receiverName,
+    memo: result.transaction?.memo,
   };
 }
 
@@ -73,6 +85,7 @@ const UploadPage: React.FC = () => {
   const [extractProgress, setExtractProgress] = useState({ done: 0, total: 0 });
   const [savedCount, setSavedCount] = useState(0);
   const [notSavedCount, setNotSavedCount] = useState(0);
+  const [skippedDuplicateCount, setSkippedDuplicateCount] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [unclearFields, setUnclearFields] = useState<string[]>([]);
@@ -94,18 +107,13 @@ const UploadPage: React.FC = () => {
     setExtractProgress({ done: 0, total: 0 });
     setSavedCount(0);
     setNotSavedCount(0);
+    setSkippedDuplicateCount(0);
     setPreviewUrl(null);
     setError('');
     setUnclearFields([]);
     setDraft(null);
   };
 
-  // Ionic keeps each tab's page mounted when you switch tabs (so scroll
-  // position/state survives a quick tab-away-and-back) -- without this,
-  // leaving the "saved" confirmation up and coming back to this tab later
-  // would still show last scan's success screen instead of a fresh picker.
-  // Only the "saved" dead-end resets; an in-progress review is left alone
-  // so briefly switching tabs mid-edit doesn't discard the user's draft.
   useIonViewWillEnter(() => {
     if (step === 'saved') reset();
   }, [step]);
@@ -120,7 +128,6 @@ const UploadPage: React.FC = () => {
     setStep('review');
   };
 
-  /** Called after a save or a skip: moves to the next queued slip, or finishes the batch. */
   const advanceQueue = () => {
     const next = queueIndex + 1;
     if (next < queue.length) {
@@ -130,12 +137,6 @@ const UploadPage: React.FC = () => {
     }
   };
 
-  /** Same validation + save logic as handleSave, but against a queue entry's
-   * own draft directly instead of the component's editable `draft` state --
-   * used by auto-save, which never puts an entry through the review form.
-   * A missing amount/date/debt is not something auto-save can fill in on
-   * its own, so those entries just come back false (counted as not-saved)
-   * rather than blocking on a review screen the user asked to skip. */
   const saveEntry = async (entry: QueueEntry): Promise<boolean> => {
     const entryDraft = entry.draft;
     const amountNumber = Number(entryDraft.amount);
@@ -143,6 +144,14 @@ const UploadPage: React.FC = () => {
     const occurredAt = datetimeLocalToIso(entryDraft.datetimeLocal);
     if (!occurredAt) return false;
     if (entryDraft.type === 'debt_payment' && !entryDraft.debtId) return false;
+
+    const amountSatang = Math.round(amountNumber * 100);
+    const existing = await checkDuplicateTransaction({ amountSatang, occurredAt });
+    if (existing) {
+      setSkippedDuplicateCount((c) => c + 1);
+      return false;
+    }
+
     try {
       if (entryDraft.type === 'debt_payment') {
         await addDebtPayment({ debtId: entryDraft.debtId, amount: amountNumber, occurredAt });
@@ -175,7 +184,19 @@ const UploadPage: React.FC = () => {
       const url = URL.createObjectURL(files[i]);
       try {
         const result = await extractDocument(files[i]);
-        entries.push({ previewUrl: url, draft: draftFromExtraction(result), unclearFields: result.unclearFields });
+        const d = draftFromExtraction(result);
+
+        const amountNum = Number(d.amount);
+        if (amountNum > 0 && d.datetimeLocal) {
+          const amountSatang = Math.round(amountNum * 100);
+          const occurredAt = datetimeLocalToIso(d.datetimeLocal);
+          const dup = await checkDuplicateTransaction({ amountSatang, occurredAt });
+          if (dup) {
+            d.isDuplicate = true;
+          }
+        }
+
+        entries.push({ previewUrl: url, draft: d, unclearFields: result.unclearFields });
       } catch {
         failCount += 1;
         URL.revokeObjectURL(url);
@@ -347,6 +368,30 @@ const UploadPage: React.FC = () => {
 
         {(step === 'review' || step === 'saving') && draft && (
           <>
+            {draft.isDuplicate && (
+              <div
+                style={{
+                  background: '#fff1f2',
+                  border: '1px solid #fecdd3',
+                  borderRadius: 16,
+                  padding: '12px 16px',
+                  marginBottom: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  color: '#e11d48',
+                }}
+              >
+                <IonIcon icon={warningOutline} style={{ fontSize: 22, flexShrink: 0 }} />
+                <div>
+                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>⚠️ ตรวจพบสลิปนี้ในระบบแล้ว</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9f1239' }}>
+                    พบรายการยอดเงินตรงกันในช่วงเวลานี้ในฐานข้อมูลแล้ว
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="tl-card">
               {isBatch && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
@@ -436,6 +481,51 @@ const UploadPage: React.FC = () => {
                   </IonSelect>
                 </div>
               )}
+
+              {/* Enriched AI Extraction Details */}
+              {(draft.bankChannel || draft.refNo || draft.senderName || draft.receiverName || draft.memo) && (
+                <div
+                  style={{
+                    marginTop: 18,
+                    padding: '12px 14px',
+                    borderRadius: 14,
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                    border: '1px solid #e2e8f0',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: '#475569' }}>
+                    <IonIcon icon={sparklesOutline} style={{ fontSize: 15, color: '#6366f1' }} />
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>รายละเอียดสกัดโดย AI</span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {draft.bankChannel && (
+                      <span style={{ fontSize: 11.5, background: '#ffffff', border: '1px solid #cbd5e1', padding: '3px 8px', borderRadius: 999, fontWeight: 600 }}>
+                        🏦 {draft.bankChannel}
+                      </span>
+                    )}
+                    {draft.refNo && (
+                      <span style={{ fontSize: 11.5, background: '#ffffff', border: '1px solid #cbd5e1', padding: '3px 8px', borderRadius: 999, fontWeight: 600 }}>
+                        🔢 {draft.refNo}
+                      </span>
+                    )}
+                    {draft.senderName && (
+                      <span style={{ fontSize: 11.5, background: '#ffffff', border: '1px solid #cbd5e1', padding: '3px 8px', borderRadius: 999, fontWeight: 600 }}>
+                        👤 {draft.senderName}
+                      </span>
+                    )}
+                    {draft.receiverName && (
+                      <span style={{ fontSize: 11.5, background: '#ffffff', border: '1px solid #cbd5e1', padding: '3px 8px', borderRadius: 999, fontWeight: 600 }}>
+                        📥 {draft.receiverName}
+                      </span>
+                    )}
+                    {draft.memo && (
+                      <span style={{ fontSize: 11.5, background: '#ffffff', border: '1px solid #cbd5e1', padding: '3px 8px', borderRadius: 999, fontWeight: 600 }}>
+                        📝 {draft.memo}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -444,15 +534,42 @@ const UploadPage: React.FC = () => {
               </IonText>
             )}
 
-            <IonButton expand="block" className="ion-margin-top" disabled={step === 'saving'} onClick={handleSave}>
+            <IonButton
+              expand="block"
+              className="ion-margin-top"
+              disabled={step === 'saving'}
+              onClick={handleSave}
+              style={{
+                '--border-radius': '999px',
+                '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)',
+                '--box-shadow': '0 8px 20px -4px rgba(15, 23, 42, 0.3)',
+                fontWeight: 700,
+                fontSize: 15,
+                minHeight: 50,
+              }}
+            >
               {step === 'saving' ? <IonSpinner name="dots" /> : isBatch && queueIndex < queue.length - 1 ? 'บันทึกแล้วไปต่อ' : 'บันทึกรายการ'}
             </IonButton>
             {isBatch && (
-              <IonButton expand="block" fill="outline" disabled={step === 'saving'} onClick={handleSkip}>
+              <IonButton
+                expand="block"
+                fill="outline"
+                disabled={step === 'saving'}
+                onClick={handleSkip}
+                style={{
+                  '--border-radius': '999px',
+                  '--border-color': '#cbd5e1',
+                  '--color': '#0f172a',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  minHeight: 46,
+                  marginTop: 10,
+                }}
+              >
                 ข้ามรายการนี้
               </IonButton>
             )}
-            <IonButton expand="block" fill="clear" disabled={step === 'saving'} onClick={reset}>
+            <IonButton expand="block" fill="clear" disabled={step === 'saving'} onClick={reset} style={{ fontWeight: 600, marginTop: 4 }}>
               {isBatch ? 'ยกเลิกทั้งหมด' : 'ยกเลิก'}
             </IonButton>
           </>
@@ -462,11 +579,23 @@ const UploadPage: React.FC = () => {
           <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
             <IonIcon icon={checkmarkCircle} color="success" style={{ fontSize: 48 }} />
             <p style={{ fontWeight: 700, marginTop: 12 }}>
-              {savedCount > 1 || notSavedCount > 0
-                ? `บันทึกแล้ว ${savedCount} รายการ${notSavedCount > 0 ? ` · ไม่ได้บันทึก ${notSavedCount} รายการ` : ''}`
+              {savedCount > 1 || notSavedCount > 0 || skippedDuplicateCount > 0
+                ? `บันทึกแล้ว ${savedCount} รายการ${skippedDuplicateCount > 0 ? ` · ข้ามสลิปซ้ำ ${skippedDuplicateCount} รายการ` : ''}${notSavedCount > 0 ? ` · ไม่ได้บันทึก ${notSavedCount} รายการ` : ''}`
                 : 'บันทึกรายการแล้ว'}
             </p>
-            <IonButton expand="block" className="ion-margin-top" onClick={reset}>
+            <IonButton
+              expand="block"
+              className="ion-margin-top"
+              onClick={reset}
+              style={{
+                '--border-radius': '999px',
+                '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)',
+                '--box-shadow': '0 8px 20px -4px rgba(15, 23, 42, 0.3)',
+                fontWeight: 700,
+                fontSize: 15,
+                minHeight: 50,
+              }}
+            >
               สแกนสลิปอีก
             </IonButton>
           </div>

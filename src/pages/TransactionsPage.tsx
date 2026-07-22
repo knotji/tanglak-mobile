@@ -12,18 +12,28 @@ const MonthPicker: React.FC<{ month: string; onChange: (month: string) => void }
   const label = formatThaiMonthYearLabel(month) ?? month;
 
   return (
-    <div className="tl-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 6px' }}>
-      <IonButton fill="clear" onClick={() => onChange(shiftBangkokMonth(month, -1))} aria-label="เดือนก่อนหน้า">
+    <div className="tl-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', marginBottom: 14 }}>
+      <IonButton fill="clear" onClick={() => onChange(shiftBangkokMonth(month, -1))} aria-label="เดือนก่อนหน้า" style={{ '--color': '#4f46e5' }}>
         <IonIcon icon={chevronBackOutline} slot="icon-only" />
       </IonButton>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        style={{ background: 'none', border: 'none', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: 'var(--ion-text-color)', padding: '8px 12px' }}
+        style={{
+          background: 'var(--tl-primary-soft)',
+          border: '1px solid var(--tl-border)',
+          borderRadius: 999,
+          fontFamily: 'inherit',
+          fontSize: 14.5,
+          fontWeight: 700,
+          color: 'var(--ion-text-color)',
+          padding: '8px 16px',
+          cursor: 'pointer',
+        }}
       >
         {label}
       </button>
-      <IonButton fill="clear" onClick={() => onChange(shiftBangkokMonth(month, 1))} aria-label="เดือนถัดไป">
+      <IonButton fill="clear" onClick={() => onChange(shiftBangkokMonth(month, 1))} aria-label="เดือนถัดไป" style={{ '--color': '#4f46e5' }}>
         <IonIcon icon={chevronForwardOutline} slot="icon-only" />
       </IonButton>
 

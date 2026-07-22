@@ -41,7 +41,40 @@ export const CATEGORY_OPTIONS: CategoryOption[] = [
   { id: 'other_income', label: 'รายรับอื่น ๆ', kind: 'income' },
 ];
 
+const CUSTOM_CATEGORIES_KEY = 'tl_custom_categories';
 const BY_ID = new Map(CATEGORY_OPTIONS.map((option) => [option.id, option]));
+
+export function getCustomCategories(): CategoryOption[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
+    return raw ? (JSON.parse(raw) as CategoryOption[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addCustomCategory(label: string, kind: 'expense' | 'income'): CategoryOption {
+  const id = `custom_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const newCat: CategoryOption = { id, label, kind };
+  const current = getCustomCategories();
+  const next = [...current, newCat];
+  localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(next));
+  CATEGORY_OPTIONS.push(newCat);
+  BY_ID.set(id, newCat);
+  return newCat;
+}
+
+export function getAllCategories(): CategoryOption[] {
+  const custom = getCustomCategories();
+  const existingIds = new Set(CATEGORY_OPTIONS.map((c) => c.id));
+  for (const c of custom) {
+    if (!existingIds.has(c.id)) {
+      CATEGORY_OPTIONS.push(c);
+      BY_ID.set(c.id, c);
+    }
+  }
+  return CATEGORY_OPTIONS;
+}
 
 export function categoryLabel(id?: string): string {
   if (!id) return '';

@@ -9,6 +9,11 @@ export interface ExtractedTransaction {
   categoryId?: string;
   categoryReason?: string;
   paymentMethod?: string;
+  refNo?: string;
+  bankChannel?: string;
+  senderName?: string;
+  receiverName?: string;
+  memo?: string;
 }
 
 export interface ExtractedFinancialDocument {

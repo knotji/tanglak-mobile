@@ -101,11 +101,11 @@ const DebtStrategyPage: React.FC = () => {
             </div>
 
             {recommendation && (
-              <div className="tl-card" style={{ background: '#E3F2EA', borderColor: '#c7e6d4' }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--tl-income)' }}>
-                  แนะนำ: {portfolioStrategyLabel(recommendation.recommendedStrategy)}
+              <div className="tl-card" style={{ background: '#ecfdf5', borderColor: '#a7f3d0', marginTop: 14, marginBottom: 14 }}>
+                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: '#047857' }}>
+                  💡 แนะนำ: {portfolioStrategyLabel(recommendation.recommendedStrategy)}
                 </p>
-                <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--tl-income)', lineHeight: 1.5 }}>{recommendation.reason}</p>
+                <p style={{ margin: '6px 0 0', fontSize: 13, color: '#065f46', lineHeight: 1.5, fontWeight: 500 }}>{recommendation.reason}</p>
               </div>
             )}
 

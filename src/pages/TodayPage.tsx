@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { IonContent, IonPage, IonRefresher, IonRefresherContent, IonSpinner, IonText, useIonViewWillEnter } from '@ionic/react';
+import { IonContent, IonIcon, IonPage, IonRefresher, IonRefresherContent, IonSpinner, IonText, useIonRouter, useIonViewWillEnter } from '@ionic/react';
+import { cardOutline, scanOutline, trendingDownOutline } from 'ionicons/icons';
 import PageHeader from '@/components/PageHeader';
 import TransactionList from '@/components/TransactionList';
 import { listTodayTransactions, type Transaction } from '@/lib/transactions';
@@ -12,6 +13,7 @@ function sumSatang(transactions: Transaction[], types: Transaction['type'][]): n
 const TodayPage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState('');
+  const router = useIonRouter();
 
   const load = async (event?: CustomEvent) => {
     try {
@@ -28,8 +30,6 @@ const TodayPage: React.FC = () => {
     void load();
   });
 
-  // Transfers aren't spending/income -- same convention as the web app
-  // (see tanglak/src/lib/finance/categories.ts on the "transfers" category).
   const expenseSatang = transactions ? sumSatang(transactions, ['expense', 'debt_payment']) : 0;
   const incomeSatang = transactions ? sumSatang(transactions, ['income', 'refund']) : 0;
 
@@ -49,29 +49,68 @@ const TodayPage: React.FC = () => {
         {error && <IonText color="danger"><p>{error}</p></IonText>}
 
         {transactions && (
-          <div className="tl-card" style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 700 }}>รายจ่ายวันนี้</p>
-              <p className="tl-amount tl-amount--expense" style={{ fontSize: 22, margin: '4px 0 0' }}>{formatTHB(expenseSatang)}</p>
+          <>
+            <div className="tl-hero-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <span className="tl-hero-title">รายจ่ายวันนี้</span>
+                  <div className="tl-hero-amount">{formatTHB(expenseSatang)}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span className="tl-hero-title">รายรับวันนี้</span>
+                  <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: '#34d399', fontVariantNumeric: 'tabular-nums' }}>
+                    {formatTHB(incomeSatang, { showPositiveSign: true })}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 700 }}>รายรับวันนี้</p>
-              <p className="tl-amount tl-amount--income" style={{ fontSize: 22, margin: '4px 0 0' }}>{formatTHB(incomeSatang, { showPositiveSign: true })}</p>
+
+            <div className="tl-quick-actions">
+              <button
+                type="button"
+                onClick={() => router.push('/tabs/upload', 'forward', 'push')}
+                className="tl-action-chip"
+                style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <IonIcon icon={scanOutline} style={{ color: '#4f46e5' }} />
+                <span>สแกนสลิป</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/tabs/transactions', 'forward', 'push')}
+                className="tl-action-chip"
+                style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <IonIcon icon={cardOutline} style={{ color: '#0f172a' }} />
+                <span>รายการทั้งหมด</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/tabs/debts', 'forward', 'push')}
+                className="tl-action-chip"
+                style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <IonIcon icon={trendingDownOutline} style={{ color: '#d97706' }} />
+                <span>จัดการหนี้สิน</span>
+              </button>
             </div>
-          </div>
+          </>
         )}
 
         {transactions?.length === 0 && (
-          <div className="tl-card tl-empty">
-            <p>วันนี้ยังไม่มีรายการ</p>
+          <div className="tl-card tl-empty" style={{ marginTop: 16 }}>
+            <p style={{ margin: 0, fontWeight: 600 }}>วันนี้ยังไม่มีรายการ</p>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--tl-text-secondary)' }}>สแกนสลิปหรือบันทึกรายการเพื่อเริ่มติดตาม</p>
           </div>
         )}
 
         {transactions && transactions.length > 0 && (
-          <TransactionList
-            transactions={transactions}
-            onDeleted={(id) => setTransactions((current) => current?.filter((t) => t.id !== id) ?? current)}
-          />
+          <div style={{ marginTop: 16 }}>
+            <TransactionList
+              transactions={transactions}
+              onDeleted={(id) => setTransactions((current) => current?.filter((t) => t.id !== id) ?? current)}
+            />
+          </div>
         )}
       </IonContent>
     </IonPage>

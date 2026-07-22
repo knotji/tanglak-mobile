@@ -69,3 +69,31 @@ export async function getTransactionById(id: string): Promise<Transaction | null
   if (error) throw new Error('โหลดรายการไม่สำเร็จ');
   return data ? mapRow(data) : null;
 }
+
+export interface CheckDuplicateInput {
+  amountSatang: number;
+  occurredAt: string;
+}
+
+export async function checkDuplicateTransaction(input: CheckDuplicateInput): Promise<Transaction | null> {
+  if (!input.amountSatang || !input.occurredAt) return null;
+  try {
+    const time = new Date(input.occurredAt).getTime();
+    if (isNaN(time)) return null;
+    const startTime = new Date(time - 5 * 60 * 1000).toISOString();
+    const endTime = new Date(time + 5 * 60 * 1000).toISOString();
+
+    const { data } = await supabase
+      .from('transactions')
+      .select(COLUMNS)
+      .eq('amount_satang', input.amountSatang)
+      .gte('occurred_at', startTime)
+      .lte('occurred_at', endTime)
+      .limit(1)
+      .maybeSingle();
+
+    return data ? mapRow(data) : null;
+  } catch {
+    return null;
+  }
+}

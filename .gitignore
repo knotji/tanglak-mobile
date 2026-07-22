@@ -9,3 +9,6 @@ android/local.properties
 supabase/.temp
 /android/app/tanglak-release.jks
 /android/keystore.properties
+/android/app/google-services.json
+/.firebase
+/firebase.json

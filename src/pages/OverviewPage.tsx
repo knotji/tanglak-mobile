@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { IonBackButton, IonButtons, IonContent, IonHeader, IonPage, IonSpinner, IonText, IonToolbar, useIonViewWillEnter } from '@ionic/react';
 import PageHeader from '@/components/PageHeader';
+import CategoryDonutChart, { type CategoryDonutItem } from '@/components/CategoryDonutChart';
+import CashFlowBarChart, { type MonthlyCashFlowPoint } from '@/components/CashFlowBarChart';
 import { getOverviewSnapshot, type OverviewSnapshot } from '@/lib/overview';
+import { listTransactionsForMonth } from '@/lib/transactions';
+import { currentBangkokMonth, shiftBangkokMonth } from '@/lib/bangkokDate';
 import { formatTHB } from '@/lib/money';
+
+const PALETTE = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#ec4899', '#14b8a6', '#f97316'];
 
 const FlowRow: React.FC<{ label: string; amountSatang: number; direction: 'in' | 'out' }> = ({ label, amountSatang, direction }) => {
   const isExpense = direction === 'out';
@@ -18,11 +24,63 @@ const FlowRow: React.FC<{ label: string; amountSatang: number; direction: 'in' |
 
 const OverviewPage: React.FC = () => {
   const [snapshot, setSnapshot] = useState<OverviewSnapshot | null>(null);
+  const [donutItems, setDonutItems] = useState<CategoryDonutItem[]>([]);
+  const [totalExpenseSatang, setTotalExpenseSatang] = useState(0);
+  const [cashFlowHistory, setCashFlowHistory] = useState<MonthlyCashFlowPoint[]>([]);
   const [error, setError] = useState('');
 
   useIonViewWillEnter(() => {
-    void getOverviewSnapshot()
-      .then(setSnapshot)
+    const currentMonth = currentBangkokMonth();
+    void Promise.all([
+      getOverviewSnapshot(),
+      listTransactionsForMonth(currentMonth),
+    ])
+      .then(([snap, txs]) => {
+        setSnapshot(snap);
+
+        // Calculate Category Breakdown
+        const categoryMap = new Map<string, number>();
+        let sumExpenseSatang = 0;
+        for (const tx of txs) {
+          if (tx.type === 'expense' || tx.type === 'debt_payment') {
+            const cat = tx.categoryLabel || 'อื่นๆ';
+            categoryMap.set(cat, (categoryMap.get(cat) ?? 0) + tx.amountSatang);
+            sumExpenseSatang += tx.amountSatang;
+          }
+        }
+
+        const items: CategoryDonutItem[] = Array.from(categoryMap.entries())
+          .map(([label, amountSatang], idx) => ({
+            label,
+            amountSatang,
+            color: PALETTE[idx % PALETTE.length],
+          }))
+          .sort((a, b) => b.amountSatang - a.amountSatang);
+
+        setDonutItems(items);
+        setTotalExpenseSatang(sumExpenseSatang);
+
+        // Build 4-month historical trend
+        const months = [
+          shiftBangkokMonth(currentMonth, -3),
+          shiftBangkokMonth(currentMonth, -2),
+          shiftBangkokMonth(currentMonth, -1),
+          currentMonth,
+        ];
+
+        void Promise.all(months.map((m) => listTransactionsForMonth(m))).then((results) => {
+          const trend: MonthlyCashFlowPoint[] = results.map((mList, i) => {
+            let inc = 0;
+            let exp = 0;
+            for (const t of mList) {
+              if (t.type === 'income' || t.type === 'refund') inc += t.amountSatang;
+              if (t.type === 'expense' || t.type === 'debt_payment') exp += t.amountSatang;
+            }
+            return { monthLabel: `${months[i].split('-')[1]}`, incomeSatang: inc, expenseSatang: exp };
+          });
+          setCashFlowHistory(trend);
+        });
+      })
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'โหลดภาพรวมไม่สำเร็จ'));
   });
 
@@ -46,26 +104,35 @@ const OverviewPage: React.FC = () => {
 
         {snapshot && (
           <>
-            <div className="tl-card" style={{ textAlign: 'center', padding: '28px 16px' }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--tl-text-secondary)' }}>เหลือใช้จริงเดือนนี้</p>
-              <p
-                className={`tl-amount ${snapshot.cashRemainingSatang < 0 ? 'tl-amount--overdue' : 'tl-amount--income'}`}
-                style={{ fontSize: 32, margin: '6px 0 0' }}
+            <div className="tl-hero-card" style={{ textAlign: 'center', padding: '28px 18px', marginBottom: 14 }}>
+              <span className="tl-hero-title">เหลือใช้จริงเดือนนี้</span>
+              <div
+                className="tl-hero-amount"
+                style={{
+                  color: snapshot.cashRemainingSatang < 0 ? '#f87171' : '#34d399',
+                  fontSize: 34,
+                }}
               >
                 {formatTHB(snapshot.cashRemainingSatang)}
-              </p>
-              <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)' }}>
-                จากรายรับ {formatTHB(snapshot.plannedIncomeSatang)}
+              </div>
+              <p style={{ margin: '6px 0 0', fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>
+                จากรายรับรวม {formatTHB(snapshot.plannedIncomeSatang)}
               </p>
             </div>
 
-            <div className="tl-card" style={{ padding: '4px 16px' }}>
-              <FlowRow label="รายรับ" amountSatang={snapshot.plannedIncomeSatang} direction="in" />
+            {/* Category Donut Breakdown */}
+            <CategoryDonutChart items={donutItems} totalSatang={totalExpenseSatang} />
+
+            {/* Cash Flow Historical Trend */}
+            <CashFlowBarChart data={cashFlowHistory} />
+
+            <div className="tl-card" style={{ padding: '8px 18px', marginTop: 14 }}>
+              <FlowRow label="รายรับวางแผนไว้" amountSatang={snapshot.plannedIncomeSatang} direction="in" />
               <div style={{ borderTop: '1px solid var(--tl-border)' }}>
                 <FlowRow label="ค่าใช้ชีวิต" amountSatang={snapshot.totals.livingExpenseSatang} direction="out" />
               </div>
               <div style={{ borderTop: '1px solid var(--tl-border)' }}>
-                <FlowRow label="จ่ายหนี้" amountSatang={snapshot.totals.debtPaymentSatang} direction="out" />
+                <FlowRow label="จ่ายหนี้สิน" amountSatang={snapshot.totals.debtPaymentSatang} direction="out" />
               </div>
               {snapshot.totals.refundSatang > 0 && (
                 <div style={{ borderTop: '1px solid var(--tl-border)' }}>
@@ -75,16 +142,18 @@ const OverviewPage: React.FC = () => {
             </div>
 
             {snapshot.debtCount > 0 && (
-              <div className="tl-card">
-                <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700 }}>หนี้สินรวม ({snapshot.debtCount} รายการ)</p>
-                <div style={{ display: 'flex', gap: 24 }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)' }}>ยอดคงเหลือรวม</p>
-                    <p className="tl-amount tl-amount--debt" style={{ fontSize: 18, margin: '2px 0 0' }}>{formatTHB(snapshot.totalOutstandingSatang)}</p>
+              <div className="tl-card" style={{ marginTop: 14 }}>
+                <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--ion-text-color)' }}>
+                  ภาพรวมหนี้สิน ({snapshot.debtCount} รายการ)
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div style={{ background: 'var(--tl-primary-soft)', padding: 12, borderRadius: 'var(--tl-radius-sm)' }}>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 600 }}>ยอดคงเหลือรวม</p>
+                    <p className="tl-amount tl-amount--debt" style={{ fontSize: 18, margin: '4px 0 0' }}>{formatTHB(snapshot.totalOutstandingSatang)}</p>
                   </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)' }}>ขั้นต่ำที่ยังขาด</p>
-                    <p className="tl-amount tl-amount--debt" style={{ fontSize: 18, margin: '2px 0 0' }}>{formatTHB(snapshot.totalMinimumDueSatang)}</p>
+                  <div style={{ background: 'var(--tl-primary-soft)', padding: 12, borderRadius: 'var(--tl-radius-sm)' }}>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 600 }}>ขั้นต่ำที่ยังขาด</p>
+                    <p className="tl-amount tl-amount--debt" style={{ fontSize: 18, margin: '4px 0 0' }}>{formatTHB(snapshot.totalMinimumDueSatang)}</p>
                   </div>
                 </div>
               </div>

@@ -175,7 +175,7 @@ const BudgetEditPage: React.FC = () => {
                       <IonSelectOption key={option.id} value={option.id}>{option.label}</IonSelectOption>
                     ))}
                   </IonSelect>
-                  <IonButton disabled={!newCategoryId} onClick={() => void handleAddCategory()}>เพิ่ม</IonButton>
+                  <IonButton disabled={!newCategoryId} onClick={() => void handleAddCategory()} style={{ '--border-radius': '999px', fontWeight: 700, '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)' }}>เพิ่ม</IonButton>
                 </div>
               )}
             </div>

@@ -1,103 +1,140 @@
 /*
- * TangLak (ตั้งหลัก) mobile theme -- mirrors the web app's actual design
- * system (tanglak/src/app/globals.css): deep-ink/navy identity, not a
- * generic green/beige fintech look. Green/amber/red are reserved for
- * income/healthy, debt/obligation, and overdue/error states only --
- * never the primary brand color.
+ * TangLak (ตั้งหลัก) mobile theme -- modern premium design system
+ * Deep navy identity with glossy dark-mode cards, refined typography,
+ * vibrant status tones, and glassmorphic tab bars.
  */
 :root {
   --ion-font-family: "Noto Sans Thai", "Noto Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  --ion-color-primary: #16233d;
-  --ion-color-primary-rgb: 22, 35, 61;
+  --ion-color-primary: #0f172a;
+  --ion-color-primary-rgb: 15, 23, 42;
   --ion-color-primary-contrast: #ffffff;
   --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: #131f36;
-  --ion-color-primary-tint: #2c3951;
+  --ion-color-primary-shade: #0a101d;
+  --ion-color-primary-tint: #1e293b;
 
-  --ion-color-success: #1f8a5f;
-  --ion-color-success-rgb: 31, 138, 95;
+  --ion-color-success: #10b981;
+  --ion-color-success-rgb: 16, 185, 129;
   --ion-color-success-contrast: #ffffff;
   --ion-color-success-contrast-rgb: 255, 255, 255;
-  --ion-color-success-shade: #1b7a54;
-  --ion-color-success-tint: #35976f;
+  --ion-color-success-shade: #0d9668;
+  --ion-color-success-tint: #34d399;
 
-  --ion-color-warning: #b5790a;
-  --ion-color-warning-rgb: 181, 121, 10;
+  --ion-color-warning: #f59e0b;
+  --ion-color-warning-rgb: 245, 158, 11;
   --ion-color-warning-contrast: #ffffff;
   --ion-color-warning-contrast-rgb: 255, 255, 255;
-  --ion-color-warning-shade: #9f6a09;
-  --ion-color-warning-tint: #bc8623;
+  --ion-color-warning-shade: #d97706;
+  --ion-color-warning-tint: #fbbf24;
 
-  --ion-color-danger: #c23b2e;
-  --ion-color-danger-rgb: 194, 59, 46;
+  --ion-color-danger: #ef4444;
+  --ion-color-danger-rgb: 239, 68, 68;
   --ion-color-danger-contrast: #ffffff;
   --ion-color-danger-contrast-rgb: 255, 255, 255;
-  --ion-color-danger-shade: #ab3429;
-  --ion-color-danger-tint: #c94f44;
+  --ion-color-danger-shade: #dc2626;
+  --ion-color-danger-tint: #f87171;
 
-  --ion-background-color: #f4f5f7;
-  --ion-text-color: #1b2430;
+  --ion-background-color: #f8fafc;
+  --ion-text-color: #0f172a;
 
-  /* App-specific tokens (not part of the Ionic palette contract), matching
-     tanglak/src/app/globals.css 1:1 so both clients read as one product. */
+  /* App-specific design tokens */
   --tl-surface: #ffffff;
-  --tl-primary-soft: #e4e9f4;
-  --tl-text-secondary: #5b6472;
-  --tl-border: #e1e4ea;
-  --tl-income: #1f8a5f;
-  --tl-expense: #1b2430;
-  --tl-debt: #b5790a;
-  --tl-overdue: #c23b2e;
-  --tl-muted: #eef1f5;
-  --tl-focus-ring: #2856c7;
-  --tl-radius: 16px;
+  --tl-primary-soft: #f1f5f9;
+  --tl-text-secondary: #64748b;
+  --tl-border: #e2e8f0;
+  --tl-income: #10b981;
+  --tl-expense: #0f172a;
+  --tl-debt: #d97706;
+  --tl-overdue: #ef4444;
+  --tl-muted: #f1f5f9;
+  --tl-focus-ring: #4f46e5;
+  --tl-radius: 18px;
   --tl-radius-sm: 12px;
+  --tl-card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
 }
 
 ion-content {
   --background: var(--ion-background-color);
 }
 
-/* IonInput/IonSelect/IonTextarea's fill="outline" had never been themed --
-   every form field in the app was rendering Ionic's stock MD look (sharp
-   4px corners, flat --border-color: #b3b3b3), clashing with the app's own
-   soft 12-16px-radius card language everywhere else. --background/
-   --border-radius/--border-color/--highlight-color are Ionic's own
-   documented theming hooks for these components (not internal
-   implementation detail), so this overrides them directly rather than
-   fighting the shadow DOM or switching every fill="outline" prop in the
-   app to fill="solid". Kept the "outline" fill's actual box-border
-   structure (all four sides, unlike "solid" which is bottom-only) but
-   made the border transparent at rest -- Ionic's own :host(.has-focus)
-   rule still reassigns --border-color to --highlight-color on focus, so a
-   colored ring appears for free exactly while editing, without needing
-   Material's underline-only affordance. */
 ion-input[fill="outline"],
 ion-select[fill="outline"],
 ion-textarea[fill="outline"] {
-  /* --tl-muted (#eef1f5) was tried first but read as barely-there against
-     a white .tl-card -- too close in lightness to register as a distinct
-     field at a glance. --tl-primary-soft is the same soft-navy tint
-     already used for the upload picker and focus badges elsewhere in the
-     app, and has enough contrast against white to actually read as a
-     field while staying on-brand instead of introducing a plain gray. */
-  --background: var(--tl-primary-soft);
+  --background: #f8fafc;
   --border-radius: var(--tl-radius-sm);
-  --border-color: transparent;
+  --border-color: #cbd5e1;
+  --border-width: 1.5px;
   --highlight-color: var(--tl-focus-ring);
+  --padding-start: 14px;
+  --padding-end: 14px;
+  font-weight: 600;
+  color: var(--ion-text-color);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+ion-input[fill="outline"]:focus-within,
+ion-select[fill="outline"]:focus-within,
+ion-textarea[fill="outline"]:focus-within {
+  --background: #ffffff;
+  --border-color: var(--tl-focus-ring);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+ion-segment {
+  background: #f1f5f9;
+  border-radius: 14px;
+  padding: 4px;
+}
+
+ion-segment-button {
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --border-radius: 10px;
+  --color: #64748b;
+  --color-checked: #0f172a;
+  --background-checked: #ffffff;
+  --indicator-color: transparent;
+  min-height: 38px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+ion-segment-button.segment-button-checked {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 .main-tab-bar {
-  --background: rgba(255, 255, 255, .96);
-  --border: 1px solid var(--tl-border);
-  padding: 5px max(18px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
+  --background: rgba(255, 255, 255, 0.92);
+  --border: 1px solid rgba(226, 232, 240, 0.8);
+  padding: 6px max(16px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.03);
 }
 
-.main-tab-bar ion-tab-button { --color: #8b95a3; --color-selected: var(--ion-color-primary); font-size: 10px; font-weight: 700; }
-.main-tab-bar ion-icon { width: 20px; height: 20px; }
+.main-tab-bar ion-tab-button {
+  --color: #94a3b8;
+  --color-selected: var(--tl-focus-ring);
+  font-size: 11px;
+  font-weight: 600;
+  transition: transform 0.15s ease;
+}
+
+.main-tab-bar ion-tab-button:active {
+  transform: scale(0.95);
+}
+
+.main-tab-bar ion-icon {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 2px;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.main-tab-bar ion-tab-button.tab-selected ion-icon {
+  transform: translateY(-2px) scale(1.1);
+}
 
 * { box-sizing: border-box; }
 
@@ -111,6 +148,7 @@ ion-header ion-toolbar > ion-title {
   text-align: center;
   pointer-events: none;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 ion-header ion-toolbar > ion-buttons,
@@ -122,25 +160,21 @@ ion-header ion-toolbar > ion-button {
 /* --- Shared page-content building blocks --- */
 
 .tl-page-header {
-  /* Tab-root pages (Today/Transactions/Debts/Upload/More) have no
-     IonHeader at all -- an empty <IonToolbar/> used to stand in just to
-     reserve safe-area space, but its default ~44-56px min-height showed
-     as a pointless blank bar on any non-notched screen (i.e. most
-     testing). env(safe-area-inset-top) reserves real notch space only
-     where a notch actually exists, so this collapses to the plain 4px on
-     everything else. */
-  padding: max(4px, env(safe-area-inset-top)) 4px 18px;
+  padding: max(8px, env(safe-area-inset-top)) 4px 20px;
 }
 .tl-page-header .tl-brand {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ion-color-primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #4f46e5;
   margin: 0 0 2px;
 }
 .tl-page-header h1 {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
   line-height: 1.2;
+  letter-spacing: -0.02em;
   color: var(--ion-text-color);
   margin: 0;
 }
@@ -155,11 +189,52 @@ ion-header ion-toolbar > ion-button {
   background: var(--tl-surface);
   border: 1px solid var(--tl-border);
   border-radius: var(--tl-radius);
-  padding: 16px;
+  padding: 18px;
+  box-shadow: var(--tl-card-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .tl-card + .tl-card {
-  margin-top: 12px;
+  margin-top: 14px;
+}
+
+/* Premium Hero Card with Navy-Indigo Mesh Gradient */
+.tl-hero-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--tl-radius);
+  padding: 22px 20px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25), 0 8px 10px -6px rgba(15, 23, 42, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.tl-hero-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+
+.tl-hero-card .tl-hero-title {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.tl-hero-card .tl-hero-amount {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
 }
 
 .tl-empty {
@@ -174,85 +249,168 @@ ion-header ion-toolbar > ion-button {
 .tl-amount--debt { color: var(--tl-debt); }
 .tl-amount--overdue { color: var(--tl-overdue); }
 
+/* Circle Icon Container Badges for Transactions */
+.tl-icon-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 20px;
+  transition: transform 0.15s ease;
+}
+
+.tl-icon-badge--income {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+.tl-icon-badge--expense {
+  background: rgba(15, 23, 42, 0.08);
+  color: #1e293b;
+}
+.tl-icon-badge--debt {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+.tl-icon-badge--transfer {
+  background: rgba(79, 70, 229, 0.12);
+  color: #4f46e5;
+}
+
 .upload-picker {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 40px 16px;
-  border: 1.5px dashed var(--tl-primary-soft);
+  gap: 6px;
+  padding: 44px 20px;
+  border: 2px dashed rgba(79, 70, 229, 0.3);
   border-radius: var(--tl-radius);
-  color: var(--ion-color-primary);
+  color: #4f46e5;
   text-align: center;
-  background: var(--tl-primary-soft);
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
-.upload-picker p { margin: 8px 0 0; font-weight: 700; font-size: 14px; }
+.upload-picker p { margin: 8px 0 0; font-weight: 700; font-size: 15px; }
 
-/* Full reset for a <button> used purely as a tap target around a row/card
-   (TransactionList rows, DebtsPage cards) -- kept as a class rather than
-   an inline `all: unset` style so the :active feedback below isn't
-   overridden by inline style's higher specificity. */
 .tl-tap-row {
   all: unset;
   display: block;
   width: 100%;
   cursor: pointer;
-  transition: opacity 0.1s ease;
+  border-radius: var(--tl-radius-sm);
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 .tl-tap-row:active {
-  opacity: 0.6;
+  transform: scale(0.985);
+  opacity: 0.85;
 }
 
-/* Transaction-type segment (4 Thai labels: รายจ่าย/รายรับ/โอนเงิน/จ่ายหนี้) is
-   tight on narrow screens at Ionic's default segment-button font size --
-   shrink font/padding so every label stays on one line. */
-ion-segment-button {
-  --padding-start: 4px;
-  --padding-end: 4px;
-  min-width: 0;
-  font-size: 12.5px;
-}
-
-/* Every IonDatetime-in-a-modal picker in the app (DateField, DateTimeField,
-   TransactionsPage's MonthPicker) is a compact widget -- a calendar grid or
-   a wheel, a few hundred px tall at most -- but a plain IonModal defaults
-   to filling the whole screen, leaving a big empty area below the picker
-   and its "เสร็จสิ้น" button. This makes the modal size itself to its
-   content instead (the standard Ionic "auto height modal" override:
-   IonModal's internal .ion-page normally stretches absolute-positioned to
-   fill the modal's own box, which itself defaults to near-fullscreen). */
 ion-modal.tl-compact-modal {
   --height: auto;
-}
-ion-modal.tl-compact-modal .ion-page {
-  position: relative;
-  display: block;
-  contain: content;
+  --border-radius: 28px;
+  --box-shadow: 0 20px 50px -12px rgba(15, 23, 42, 0.3);
+  --backdrop-opacity: 0.5;
 }
 
-/* DateField/DateTimeField's trigger is a plain <button> standing in for an
-   IonInput/IonSelect (no native date/time picker is used anywhere in this
-   app -- see DateTimeField's own comment). Matches the themed
-   fill="outline" tokens above (--tl-radius-sm, --tl-primary-soft fill, no
-   border), not Ionic's raw stock values, so it still lines up with its
-   native siblings after those got themed too -- most visible on
-   DebtFormPage, where this button sits directly beside a real IonInput in
-   the same grid row. A focus-visible ring substitutes for the border-color
-   trick IonInput gets for free from Ionic's own :host(.has-focus) rule,
-   since this is a plain button with no such built-in state. */
+ion-modal.tl-compact-modal::part(content) {
+  border-radius: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: #ffffff;
+}
+
+ion-datetime {
+  --background: #ffffff;
+  --background-nested: #ffffff;
+  --title-color: #0f172a;
+  border-radius: 24px;
+  padding: 4px 6px;
+}
+
+ion-datetime::part(day active),
+ion-datetime::part(day active):focus {
+  background: linear-gradient(135deg, #0f172a 0%, #312e81 100%);
+  color: #ffffff;
+  border-radius: 999px;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.3);
+}
+
+ion-datetime::part(day today) {
+  color: #4f46e5;
+  font-weight: 800;
+  border: 1.5px solid #818cf8;
+  border-radius: 999px;
+}
+
+ion-datetime::part(day-of-week) {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+ion-datetime::part(time-button) {
+  background: var(--tl-primary-soft);
+  color: #4f46e5;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 6px 14px;
+  border: 1px solid var(--tl-border);
+}
+
 .tl-field-trigger {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   width: 100%;
-  min-height: 56px;
+  min-height: 50px;
   text-align: left;
-  padding: 0 16px;
+  padding: 0 14px;
   border-radius: var(--tl-radius-sm);
-  border: 1px solid transparent;
-  background: var(--tl-primary-soft);
+  border: 1.5px solid #cbd5e1;
+  background: #f8fafc;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
-.tl-field-trigger:focus-visible {
+.tl-field-trigger:focus-visible,
+.tl-field-trigger:active {
   border-color: var(--tl-focus-ring);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  background: #ffffff;
+  outline: none;
 }
+
+/* Quick Action Chips */
+.tl-quick-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.tl-action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--tl-surface);
+  border: 1px solid var(--tl-border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ion-text-color);
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.tl-action-chip:active {
+  transform: scale(0.96);
+  background: var(--tl-primary-soft);
+}
+

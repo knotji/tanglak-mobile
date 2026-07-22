@@ -28,6 +28,14 @@ const TYPE_LABEL: Record<Transaction['type'], string> = {
   transfer: 'โอนเงิน',
 };
 
+const BADGE_CLASS: Record<Transaction['type'], string> = {
+  income: 'tl-icon-badge--income',
+  refund: 'tl-icon-badge--income',
+  expense: 'tl-icon-badge--expense',
+  debt_payment: 'tl-icon-badge--debt',
+  transfer: 'tl-icon-badge--transfer',
+};
+
 const TransactionRow: React.FC<{ transaction: Transaction }> = ({ transaction }) => {
   const isIncoming = transaction.type === 'income' || transaction.type === 'refund';
   const tone = TYPE_TONE[transaction.type];
@@ -35,21 +43,23 @@ const TransactionRow: React.FC<{ transaction: Transaction }> = ({ transaction })
   const time = formatThaiDateTimeLabel(isoInstantToBangkokDatetimeLocal(transaction.occurredAt));
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-      <IonIcon icon={TYPE_ICON[transaction.type]} color={tone === 'income' ? 'success' : tone === 'debt' ? 'warning' : 'medium'} style={{ fontSize: 26, flexShrink: 0 }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
+      <div className={`tl-icon-badge ${BADGE_CLASS[transaction.type]}`}>
+        <IonIcon icon={TYPE_ICON[transaction.type]} />
+      </div>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <p style={{ margin: 0, fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--ion-text-color)' }}>
           {transaction.merchant || transaction.categoryLabel || TYPE_LABEL[transaction.type]}
         </p>
-        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)' }}>
+        <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 500 }}>
           {time ?? transaction.occurredAt}
           {transaction.categoryLabel && transaction.merchant ? ` · ${transaction.categoryLabel}` : ''}
         </p>
       </div>
-      <span className={`tl-amount tl-amount--${tone}`} style={{ fontSize: 14 }}>
+      <span className={`tl-amount tl-amount--${tone}`} style={{ fontSize: 15, fontWeight: 700 }}>
         {formatTHB(signedSatang, { showPositiveSign: isIncoming })}
       </span>
-      <IonIcon icon={chevronForwardOutline} color="medium" style={{ fontSize: 16, flexShrink: 0, opacity: 0.6 }} />
+      <IonIcon icon={chevronForwardOutline} style={{ fontSize: 16, flexShrink: 0, color: '#94a3b8', opacity: 0.7 }} />
     </div>
   );
 };

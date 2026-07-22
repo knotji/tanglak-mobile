@@ -40,10 +40,10 @@ const AFFORDABILITY_LABEL: Record<AffordabilityStatus, string> = {
 };
 
 const AFFORDABILITY_TONE: Record<AffordabilityStatus, { bg: string; fg: string }> = {
-  safe: { bg: '#E3F2EA', fg: 'var(--tl-income)' },
-  tight: { bg: '#FBF0DD', fg: 'var(--tl-debt)' },
-  risky: { bg: '#FBE9E7', fg: 'var(--tl-overdue)' },
-  insufficient_data: { bg: 'var(--tl-muted)', fg: 'var(--tl-text-secondary)' },
+  safe: { bg: '#ecfdf5', fg: '#047857' },
+  tight: { bg: '#fef3c7', fg: '#b45309' },
+  risky: { bg: '#fee2e2', fg: '#dc2626' },
+  insufficient_data: { bg: '#f1f5f9', fg: '#64748b' },
 };
 
 const EXTRA_BEHAVIOR_LABEL: Record<ExtraPaymentBehavior, string> = {
@@ -55,7 +55,7 @@ const EXTRA_BEHAVIOR_LABEL: Record<ExtraPaymentBehavior, string> = {
 function AffordabilityBadge({ status }: { status: AffordabilityStatus }) {
   const tone = AFFORDABILITY_TONE[status];
   return (
-    <span style={{ display: 'inline-block', borderRadius: 14, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, background: tone.bg, color: tone.fg }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700, background: tone.bg, color: tone.fg }}>
       {AFFORDABILITY_LABEL[status]}
     </span>
   );
@@ -63,9 +63,9 @@ function AffordabilityBadge({ status }: { status: AffordabilityStatus }) {
 
 function Stat({ label, children, tone }: { label: string; children: React.ReactNode; tone?: string }) {
   return (
-    <div>
-      <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)' }}>{label}</p>
-      <p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: tone }}>{children}</p>
+    <div style={{ background: 'var(--tl-primary-soft)', padding: '10px 12px', borderRadius: 'var(--tl-radius-sm)' }}>
+      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--tl-text-secondary)', fontWeight: 600 }}>{label}</p>
+      <p style={{ margin: '3px 0 0', fontSize: 15, fontWeight: 700, color: tone ?? 'var(--ion-text-color)', fontVariantNumeric: 'tabular-nums' }}>{children}</p>
     </div>
   );
 }

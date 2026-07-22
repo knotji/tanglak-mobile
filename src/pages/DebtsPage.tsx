@@ -56,14 +56,18 @@ const DebtsPage: React.FC = () => {
         {error && <IonText color="danger"><p>{error}</p></IonText>}
 
         {debts && filterActiveDebts(debts).length >= 2 && (
-          <button type="button" className="tl-tap-row" onClick={() => history.push('/debts/strategy')} style={{ marginBottom: 12 }}>
-            <div className="tl-card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <IonIcon icon={trendingUpOutline} color="primary" style={{ fontSize: 22, flexShrink: 0 }} />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>เทียบกลยุทธ์ผ่อนหนี้</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)' }}>ควรโปะหนี้ก้อนไหนก่อน ระหว่างปิดก้อนเล็กกับลดดอกเบี้ย</p>
+          <button type="button" className="tl-tap-row" onClick={() => history.push('/debts/strategy')} style={{ marginBottom: 16 }}>
+            <div className="tl-card" style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'linear-gradient(135deg, #eef2ff 0%, #ffffff 100%)', borderColor: '#c7d2fe' }}>
+              <div className="tl-icon-badge tl-icon-badge--transfer" style={{ background: '#4f46e5', color: '#ffffff' }}>
+                <IonIcon icon={trendingUpOutline} />
               </div>
-              <IonIcon icon={chevronForwardOutline} color="medium" style={{ fontSize: 16, opacity: 0.6 }} />
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: 'var(--ion-text-color)' }}>เปรียบเทียบกลยุทธ์โปะหนี้</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 500 }}>
+                  เลือกแผน Snowball หรือ Avalanche เพื่อประหยัดดอกเบี้ยมากที่สุด
+                </p>
+              </div>
+              <IonIcon icon={chevronForwardOutline} style={{ fontSize: 16, color: '#4f46e5' }} />
             </div>
           </button>
         )}
