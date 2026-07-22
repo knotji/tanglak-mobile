@@ -7,6 +7,8 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
 try {
+  & npm.cmd run test.unit -- --run
+  if ($LASTEXITCODE -ne 0) { throw 'Unit tests failed.' }
   & npm.cmd run lint
   if ($LASTEXITCODE -ne 0) { throw 'Lint failed.' }
   & npm.cmd run build
