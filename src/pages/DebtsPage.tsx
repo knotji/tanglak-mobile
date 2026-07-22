@@ -44,6 +44,8 @@ const DebtsPage: React.FC = () => {
           <IonRefresherContent />
         </IonRefresher>
 
+        {/* Bottom padding keeps the floating "+" FAB from covering the last card's text. */}
+        <div style={{ paddingBottom: 72 }}>
         <PageHeader title="หนี้สิน" subtitle="รายการหนี้และยอดผ่อนแต่ละงวด" />
 
         {debts === null && !error && (
@@ -69,6 +71,7 @@ const DebtsPage: React.FC = () => {
             <DebtCard debt={debt} />
           </button>
         ))}
+        </div>
 
         <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: 8 }}>
           <IonFabButton onClick={() => history.push('/debts/new')} aria-label="เพิ่มหนี้">

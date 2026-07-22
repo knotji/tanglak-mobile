@@ -59,7 +59,7 @@ const BudgetPage: React.FC = () => {
             <IonBackButton defaultHref="/tabs/more" text="" />
           </IonButtons>
           <IonButtons slot="end">
-            <IonButton onClick={() => history.push('/budget/edit')}>
+            <IonButton onClick={() => history.push('/budget/edit')} aria-label="แก้ไขงบประมาณ">
               <IonIcon icon={pencilOutline} slot="icon-only" />
             </IonButton>
           </IonButtons>

@@ -9,6 +9,7 @@ import {
   type Debt,
 } from '@/lib/debts';
 import { formatTHB } from '@/lib/money';
+import { formatThaiDateLabel } from '@/lib/date';
 
 const STATUS_ICON = {
   not_yet_due: calendarClearOutline,
@@ -71,7 +72,7 @@ const DebtCard: React.FC<{ debt: Debt }> = ({ debt }) => {
         <Stat label="ยอดคงเหลือ">{formatTHB(debt.outstandingBalanceSatang ?? 0)}</Stat>
         <Stat label="ยอดเรียกเก็บรอบนี้">{formatTHB(debt.amountDueSatang ?? 0)}</Stat>
         <Stat label="ขั้นต่ำเดือนนี้">{formatTHB(debt.minimumPaymentSatang ?? 0)}</Stat>
-        <Stat label="ครบกำหนด">{debt.dueDate ?? 'ยังไม่ระบุ'}</Stat>
+        <Stat label="ครบกำหนด">{debt.dueDate ? (formatThaiDateLabel(debt.dueDate) ?? debt.dueDate) : 'ยังไม่ระบุ'}</Stat>
       </div>
 
       {debt.interestRateAnnual !== null && (

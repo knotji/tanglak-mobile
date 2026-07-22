@@ -66,7 +66,7 @@ const AccountsPage: React.FC = () => {
                     {` · ${maskLastFour(account.lastFour)}`}
                   </p>
                 </IonLabel>
-                {!account.isActive && <IonBadge color="medium">ปิดใช้งาน</IonBadge>}
+                {!account.isActive && <IonBadge slot="end" color="medium">ปิดใช้งาน</IonBadge>}
               </IonItem>
             ))}
           </IonList>

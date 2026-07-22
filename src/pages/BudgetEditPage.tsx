@@ -156,7 +156,7 @@ const BudgetEditPage: React.FC = () => {
                     onIonInput={(e) => handleCategoryAmountChange(category.id, e.detail.value ?? '')}
                     onIonBlur={(e) => void handleCategoryAmountBlur(category.id, (e.target as HTMLIonInputElement).value as string)}
                   />
-                  <IonButton fill="clear" color="danger" onClick={() => setConfirmDeleteId(category.id)}>
+                  <IonButton fill="clear" color="danger" onClick={() => setConfirmDeleteId(category.id)} aria-label={`ลบหมวดหมู่ ${category.label}`}>
                     <IonIcon icon={trashOutline} slot="icon-only" />
                   </IonButton>
                 </div>
