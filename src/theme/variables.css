@@ -76,7 +76,13 @@ ion-content {
 ion-input[fill="outline"],
 ion-select[fill="outline"],
 ion-textarea[fill="outline"] {
-  --background: var(--tl-muted);
+  /* --tl-muted (#eef1f5) was tried first but read as barely-there against
+     a white .tl-card -- too close in lightness to register as a distinct
+     field at a glance. --tl-primary-soft is the same soft-navy tint
+     already used for the upload picker and focus badges elsewhere in the
+     app, and has enough contrast against white to actually read as a
+     field while staying on-brand instead of introducing a plain gray. */
+  --background: var(--tl-primary-soft);
   --border-radius: var(--tl-radius-sm);
   --border-color: transparent;
   --highlight-color: var(--tl-focus-ring);
@@ -227,7 +233,7 @@ ion-modal.tl-compact-modal .ion-page {
 /* DateField/DateTimeField's trigger is a plain <button> standing in for an
    IonInput/IonSelect (no native date/time picker is used anywhere in this
    app -- see DateTimeField's own comment). Matches the themed
-   fill="outline" tokens above (--tl-radius-sm, --tl-muted fill, no
+   fill="outline" tokens above (--tl-radius-sm, --tl-primary-soft fill, no
    border), not Ionic's raw stock values, so it still lines up with its
    native siblings after those got themed too -- most visible on
    DebtFormPage, where this button sits directly beside a real IonInput in
@@ -243,7 +249,7 @@ ion-modal.tl-compact-modal .ion-page {
   padding: 0 16px;
   border-radius: var(--tl-radius-sm);
   border: 1px solid transparent;
-  background: var(--tl-muted);
+  background: var(--tl-primary-soft);
   font-family: inherit;
   font-size: 16px;
 }
