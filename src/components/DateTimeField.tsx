@@ -50,7 +50,7 @@ const DateTimeField: React.FC<DateTimeFieldProps> = ({ value, onChange, hint }) 
         <p style={{ fontSize: 12, marginTop: 4, color: 'var(--tl-text-secondary)' }}>{hint}</p>
       )}
 
-      <IonModal isOpen={open} onDidDismiss={() => setOpen(false)}>
+      <IonModal className="tl-compact-modal" isOpen={open} onDidDismiss={() => setOpen(false)}>
         <div style={{ padding: 16 }}>
           <IonDatetime
             presentation="date-time"

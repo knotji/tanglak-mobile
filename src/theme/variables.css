@@ -184,14 +184,14 @@ ion-segment-button {
   font-size: 12.5px;
 }
 
-/* IonDatetime's wheel-style pickers (presentation="month-year", used by
-   TransactionsPage's MonthPicker) are compact by nature -- wrapping one in
-   the same plain full-page IonModal used for the date/date-time grid
-   pickers left a tiny wheel pinned to the top of an otherwise empty
-   full-height sheet. This makes the modal size itself to its content
-   instead (the standard Ionic "auto height modal" override: IonModal's
-   internal .ion-page normally stretches absolute-positioned to fill the
-   modal's own box, which itself defaults to near-fullscreen). */
+/* Every IonDatetime-in-a-modal picker in the app (DateField, DateTimeField,
+   TransactionsPage's MonthPicker) is a compact widget -- a calendar grid or
+   a wheel, a few hundred px tall at most -- but a plain IonModal defaults
+   to filling the whole screen, leaving a big empty area below the picker
+   and its "เสร็จสิ้น" button. This makes the modal size itself to its
+   content instead (the standard Ionic "auto height modal" override:
+   IonModal's internal .ion-page normally stretches absolute-positioned to
+   fill the modal's own box, which itself defaults to near-fullscreen). */
 ion-modal.tl-compact-modal {
   --height: auto;
 }
