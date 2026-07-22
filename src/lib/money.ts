@@ -21,8 +21,14 @@ export function formatTHB(satang: number, options: { showPositiveSign?: boolean 
   if (!Number.isFinite(satang)) throw new Error('Invalid satang amount');
   const normalized = normalizeSatang(satang);
   const sign = normalized < 0 ? '-' : options.showPositiveSign && normalized > 0 ? '+' : '';
+  // minimumFractionDigits must match maximumFractionDigits here -- with only
+  // a max set, Intl.NumberFormat trims trailing zeros, so a value like
+  // 1500.50 baht rendered as "1,500.5" instead of "1,500.50" (caught by a
+  // test; same latent bug exists in tanglak's own src/lib/finance/money.ts).
+  const digits = normalized % 100 === 0 ? 0 : 2;
   const amount = new Intl.NumberFormat('th-TH', {
-    maximumFractionDigits: normalized % 100 === 0 ? 0 : 2,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   }).format(Math.abs(satangToBaht(normalized)));
   return `${sign}฿${amount}`;
 }

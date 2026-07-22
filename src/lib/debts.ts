@@ -82,7 +82,7 @@ async function fetchDebtRows(): Promise<Debt[]> {
  * both paths share the same write, this just decides when to trigger it
  * without the user tapping anything.
  */
-function shouldAutoAdvance(debt: Debt): boolean {
+export function shouldAutoAdvance(debt: Debt): boolean {
   if (!debt.dueDate) return false;
   if (debt.amountDueSatang === null || debt.amountDueSatang <= 0) return false;
   if (debt.amountPaidThisCycleSatang < debt.amountDueSatang) return false;
@@ -299,12 +299,12 @@ export function formatInterestRateSummary(annualRatePercent: number): string {
 // still update that from their actual statement -- advancing the cycle
 // is not the same claim as "the balance changed"). ---
 
-function daysInMonth(year: number, month1based: number): number {
+export function daysInMonth(year: number, month1based: number): number {
   return new Date(Date.UTC(year, month1based, 0)).getUTCDate();
 }
 
 /** Shifts a YYYY-MM-DD date forward by exactly one month, clamping the day if the target month is shorter. */
-function shiftDateKeyByOneMonth(dateKey: string): string {
+export function shiftDateKeyByOneMonth(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map(Number);
   const targetYear = m === 12 ? y + 1 : y;
   const targetMonth = m === 12 ? 1 : m + 1;
@@ -313,7 +313,7 @@ function shiftDateKeyByOneMonth(dateKey: string): string {
 }
 
 /** Same as shiftDateKeyByOneMonth, but uses recurringDueDay for the target day when set (matches "due on the Nth of every month" semantics) instead of preserving the original day-of-month. */
-function nextDueDate(currentDueDate: string, recurringDueDay: number | null): string {
+export function nextDueDate(currentDueDate: string, recurringDueDay: number | null): string {
   if (!recurringDueDay) return shiftDateKeyByOneMonth(currentDueDate);
   const [y, m] = currentDueDate.split('-').map(Number);
   const targetYear = m === 12 ? y + 1 : y;
@@ -366,7 +366,7 @@ async function recalculateAmountPaidThisCycle(debtId: string): Promise<void> {
   if (updateError) throw new Error('บันทึกยอดจ่ายรอบนี้ไม่สำเร็จ');
 }
 
-function addOneDay(dateKey: string): string {
+export function addOneDay(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map(Number);
   const next = new Date(Date.UTC(y, m - 1, d + 1));
   return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`;
