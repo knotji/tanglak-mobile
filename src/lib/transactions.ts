@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
-import { todayBangkokRange } from '@/lib/bangkokDate';
+import { todayBangkokRange, bangkokMonthRange } from '@/lib/bangkokDate';
 
 export type TransactionType = 'income' | 'expense' | 'debt_payment' | 'transfer' | 'refund';
 
@@ -39,12 +39,15 @@ function mapRow(row: TransactionRow): Transaction {
   };
 }
 
-export async function listRecentTransactions(limit = 50): Promise<Transaction[]> {
+/** All transactions within a Bangkok calendar month (`YYYY-MM`), newest first. */
+export async function listTransactionsForMonth(month: string): Promise<Transaction[]> {
+  const { start, end } = bangkokMonthRange(month);
   const { data, error } = await supabase
     .from('transactions')
     .select(COLUMNS)
-    .order('occurred_at', { ascending: false })
-    .limit(limit);
+    .gte('occurred_at', start)
+    .lt('occurred_at', end)
+    .order('occurred_at', { ascending: false });
   if (error) throw new Error('โหลดรายการไม่สำเร็จ');
   return (data ?? []).map(mapRow);
 }

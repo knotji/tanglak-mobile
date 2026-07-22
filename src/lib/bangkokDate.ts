@@ -42,3 +42,12 @@ export function bangkokMonthRange(month: string): { start: string; end: string }
 export function currentBangkokMonth(now: Date = new Date()): string {
   return nowBangkokDatetimeLocal(now).slice(0, 7);
 }
+
+/** `month` ("YYYY-MM") shifted by `delta` whole calendar months (may be negative). */
+export function shiftBangkokMonth(month: string, delta: number): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  const total = year * 12 + (monthNumber - 1) + delta;
+  const nextYear = Math.floor(total / 12);
+  const nextMonth = (total % 12) + 1;
+  return `${nextYear}-${String(nextMonth).padStart(2, '0')}`;
+}

@@ -82,6 +82,17 @@ export function formatThaiDateLabel(dateKey: string): string | null {
   return new Intl.DateTimeFormat('th-TH-u-ca-gregory', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
+/** e.g. "กรกฎาคม 2026" -- Thai month name + Gregorian year, for a month picker/header. `month` is "YYYY-MM". */
+export function formatThaiMonthYearLabel(month: string): string | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const monthNumber = Number(match[2]);
+  if (monthNumber < 1 || monthNumber > 12) return null;
+  const date = new Date(Date.UTC(year, monthNumber - 1, 1));
+  return new Intl.DateTimeFormat('th-TH-u-ca-gregory', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(date);
+}
+
 /**
  * "18 ก.ค." (day + month, no year -- day/month are the same regardless of
  * Buddhist vs Gregorian calendar, so no -u-ca-gregory override is needed
