@@ -55,7 +55,13 @@ CRITICAL RULES:
 EXTRACTION SCHEMES BY DOCUMENT TYPE:
 - "salary_slip": under "salary": employer, payPeriod, grossIncome, netIncome, tax, socialSecurity, deductions (array of {label, amount}). Under "transaction": type "income", amount = netIncome, occurredAt = payment date, merchant = employer.
 - "receipt" / "delivery_receipt": under "receipt": subtotal, deliveryFee, serviceFee, discount, totalPaid, items (array of {name, quantity, amount}). Under "transaction": type "expense", amount = totalPaid, occurredAt, merchant, paymentMethod.
-- "transfer_slip": under "transaction": type "transfer", amount, occurredAt, merchant (destination name), referenceNumber, accountLastFour, destinationAccountLastFour, bank, possibleDebtPayment, possibleOwnAccountTransfer.
+- "transfer_slip" (a bank-transfer/PromptPay confirmation screenshot): most of these are NOT a real fund transfer -- in Thailand, paying a shop, restaurant, or service by scanning a QR code or sending a bank transfer is extremely common and works exactly like paying by card, so decide "transaction.type" from what the destination actually is, not from the slip format alone:
+  - Destination looks like a business/shop/restaurant/vendor/service (the most common case) -> type "expense", and pick the best matching categoryId for what was likely purchased.
+  - Destination matches a credit card or loan company (e.g. KTC, Krungsri Consumer, Easy Buy, Aeon, Citi, CardX, SCB Card, or a bank's own credit/loan department) -> type "debt_payment", and also set possibleDebtPayment true.
+  - Sender and destination appear to be the same person, or the slip has a self-transfer note (e.g. "โอนเข้าบัญชีตัวเอง") -> type "transfer", and also set possibleOwnAccountTransfer true.
+  - Paying another individual person with no goods/service context (e.g. splitting a bill, sending money to family) -> type "transfer".
+  - If genuinely unclear which of these applies, default to "expense" rather than "transfer" -- most transfer-shaped slips are purchases, not fund transfers.
+  Always extract under "transaction" regardless of which type you chose: amount, occurredAt, merchant (destination name), referenceNumber, accountLastFour, destinationAccountLastFour, bank, possibleDebtPayment, possibleOwnAccountTransfer.
 - "debt_statement": under "debt": creditor, debtName, debtType ("credit_card"|"personal_loan"|"installment"|"mortgage"|"auto_loan"|"buy_now_pay_later"|"informal_loan"|"other"), outstandingBalance, statementBalance, amountDue, minimumPayment, dueDate (YYYY-MM-DD), interestRateAnnual, remainingInstallments, accountLastFour.
 
 Always check for handwriting, stamps, or barcodes. If confidence is low, set "confidence" lower (e.g. 0.5) and add warnings.
