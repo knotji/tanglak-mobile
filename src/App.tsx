@@ -4,6 +4,13 @@ import { Redirect, Route } from 'react-router-dom';
 import { IonApp, IonLoading, IonRouterOutlet, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { supabase } from '@/lib/supabaseClient';
+import OverviewPage from '@/pages/OverviewPage';
+import BudgetPage from '@/pages/BudgetPage';
+import SettingsPage from '@/pages/SettingsPage';
+import AccountsPage from '@/pages/AccountsPage';
+import EditTransactionPage from '@/pages/EditTransactionPage';
+import DebtFormPage from '@/pages/DebtFormPage';
+import BudgetEditPage from '@/pages/BudgetEditPage';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -19,15 +26,19 @@ import './theme/variables.css';
 
 setupIonicReact();
 
+// Only Login/MainTabs are code-split: they're each behind their own gate
+// (checkingSession / the login redirect) so a first-load spinner there
+// reads as normal app boot. The pages below are pushed on top of an
+// already-visible, already-interactive tab bar -- lazy-loading those was
+// splitting off a couple KB each while sharing one Suspense boundary with
+// everything else in the outlet. Suspending on any one of them unmounted
+// the WHOLE outlet (including the already-mounted MainTabs/tab bar) until
+// its chunk fetched, then remounted everything -- the visible "bounce"
+// when opening a More-menu item for the first time in a session. Static
+// imports here removes the possibility of that boundary ever firing for
+// these routes.
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const MainTabs = lazy(() => import('@/components/MainTabs'));
-const OverviewPage = lazy(() => import('@/pages/OverviewPage'));
-const BudgetPage = lazy(() => import('@/pages/BudgetPage'));
-const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
-const AccountsPage = lazy(() => import('@/pages/AccountsPage'));
-const EditTransactionPage = lazy(() => import('@/pages/EditTransactionPage'));
-const DebtFormPage = lazy(() => import('@/pages/DebtFormPage'));
-const BudgetEditPage = lazy(() => import('@/pages/BudgetEditPage'));
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
