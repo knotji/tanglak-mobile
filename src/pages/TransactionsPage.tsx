@@ -27,7 +27,7 @@ const MonthPicker: React.FC<{ month: string; onChange: (month: string) => void }
         <IonIcon icon={chevronForwardOutline} slot="icon-only" />
       </IonButton>
 
-      <IonModal isOpen={open} onDidDismiss={() => setOpen(false)}>
+      <IonModal className="tl-compact-modal" isOpen={open} onDidDismiss={() => setOpen(false)}>
         <div style={{ padding: 16 }}>
           <IonDatetime
             presentation="month-year"
