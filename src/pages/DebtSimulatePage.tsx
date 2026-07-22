@@ -231,7 +231,7 @@ const DebtSimulatePage: React.FC = () => {
                 type="button"
                 className="tl-tap-row"
                 onClick={() => setShowSettings((v) => !v)}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, fontSize: 14 }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, fontSize: 14, padding: '6px 0' }}
               >
                 <span>ปรับแต่งข้อมูลทางการเงิน {showSettings ? '(ปิด)' : '(ขยาย)'}</span>
                 <span>{showSettings ? '▲' : '▼'}</span>
@@ -396,7 +396,7 @@ const DebtSimulatePage: React.FC = () => {
                 type="button"
                 className="tl-tap-row"
                 onClick={() => setShowAssumptions((v) => !v)}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, fontSize: 14 }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, fontSize: 14, padding: '6px 0' }}
               >
                 <span>สมมติฐานและคำชี้แจงในการคำนวณ {showAssumptions ? '(ปิด)' : '(ขยาย)'}</span>
                 <span>{showAssumptions ? '▲' : '▼'}</span>
