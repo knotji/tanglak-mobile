@@ -51,7 +51,6 @@
   --tl-overdue: #c23b2e;
   --tl-muted: #eef1f5;
   --tl-focus-ring: #2856c7;
-  --tl-input-border: #c7cbd6;
   --tl-radius: 16px;
   --tl-radius-sm: 12px;
 }
@@ -63,15 +62,23 @@ ion-content {
 /* IonInput/IonSelect/IonTextarea's fill="outline" had never been themed --
    every form field in the app was rendering Ionic's stock MD look (sharp
    4px corners, flat --border-color: #b3b3b3), clashing with the app's own
-   soft 12-16px-radius card language everywhere else. --border-radius/
-   --border-color/--highlight-color are Ionic's own documented theming
-   hooks for these components (not internal implementation detail), so this
-   overrides them directly rather than fighting the shadow DOM. */
+   soft 12-16px-radius card language everywhere else. --background/
+   --border-radius/--border-color/--highlight-color are Ionic's own
+   documented theming hooks for these components (not internal
+   implementation detail), so this overrides them directly rather than
+   fighting the shadow DOM or switching every fill="outline" prop in the
+   app to fill="solid". Kept the "outline" fill's actual box-border
+   structure (all four sides, unlike "solid" which is bottom-only) but
+   made the border transparent at rest -- Ionic's own :host(.has-focus)
+   rule still reassigns --border-color to --highlight-color on focus, so a
+   colored ring appears for free exactly while editing, without needing
+   Material's underline-only affordance. */
 ion-input[fill="outline"],
 ion-select[fill="outline"],
 ion-textarea[fill="outline"] {
+  --background: var(--tl-muted);
   --border-radius: var(--tl-radius-sm);
-  --border-color: var(--tl-input-border);
+  --border-color: transparent;
   --highlight-color: var(--tl-focus-ring);
 }
 
@@ -220,10 +227,13 @@ ion-modal.tl-compact-modal .ion-page {
 /* DateField/DateTimeField's trigger is a plain <button> standing in for an
    IonInput/IonSelect (no native date/time picker is used anywhere in this
    app -- see DateTimeField's own comment). Matches the themed
-   fill="outline" tokens above (--tl-radius-sm / --tl-input-border), not
-   Ionic's raw stock values, so it still lines up with its native siblings
-   after those got themed too -- most visible on DebtFormPage, where this
-   button sits directly beside a real IonInput in the same grid row. */
+   fill="outline" tokens above (--tl-radius-sm, --tl-muted fill, no
+   border), not Ionic's raw stock values, so it still lines up with its
+   native siblings after those got themed too -- most visible on
+   DebtFormPage, where this button sits directly beside a real IonInput in
+   the same grid row. A focus-visible ring substitutes for the border-color
+   trick IonInput gets for free from Ionic's own :host(.has-focus) rule,
+   since this is a plain button with no such built-in state. */
 .tl-field-trigger {
   display: flex;
   align-items: center;
@@ -232,8 +242,11 @@ ion-modal.tl-compact-modal .ion-page {
   text-align: left;
   padding: 0 16px;
   border-radius: var(--tl-radius-sm);
-  border: 1px solid var(--tl-input-border);
-  background: var(--tl-surface);
+  border: 1px solid transparent;
+  background: var(--tl-muted);
   font-family: inherit;
   font-size: 16px;
+}
+.tl-field-trigger:focus-visible {
+  border-color: var(--tl-focus-ring);
 }
