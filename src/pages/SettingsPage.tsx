@@ -4,12 +4,13 @@ import { notificationsOutline, personOutline, logOutOutline, fingerPrintOutline 
 import PageHeader from '@/components/PageHeader';
 import { supabase } from '@/lib/supabaseClient';
 import { listDebts } from '@/lib/debts';
-import { requestNotificationPermission, scheduleDebtReminders } from '@/lib/notifications';
+import { requestNotificationPermission, scheduleDebtReminders, cancelAllDebtReminders } from '@/lib/notifications';
+import { isDebtReminderEnabled, setDebtReminderEnabled } from '@/lib/notificationPrefs';
 import { isBiometricLockEnabled, setBiometricLockEnabled, authenticateBiometrics } from '@/lib/biometrics';
 
 const SettingsPage: React.FC = () => {
   const [email, setEmail] = useState<string | null>(null);
-  const [notifyEnabled, setNotifyEnabled] = useState(true);
+  const [notifyEnabled, setNotifyEnabled] = useState(() => isDebtReminderEnabled());
   const [biometricEnabled, setBiometricEnabled] = useState(() => isBiometricLockEnabled());
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -19,20 +20,25 @@ const SettingsPage: React.FC = () => {
   });
 
   const handleToggleNotify = async (checked: boolean) => {
-    setNotifyEnabled(checked);
     if (checked) {
       setBusy(true);
       const granted = await requestNotificationPermission();
       if (granted) {
         const debts = await listDebts();
         const count = await scheduleDebtReminders(debts);
+        setDebtReminderEnabled(true);
+        setNotifyEnabled(true);
         setNotice(count > 0 ? `ตั้งเตือนวันชำระหนี้แล้ว ${count} รายการ` : 'เปิดการแจ้งเตือนแล้ว');
       } else {
         setNotice('ยังไม่ได้รับการอนุญาตการแจ้งเตือน');
+        setDebtReminderEnabled(false);
         setNotifyEnabled(false);
       }
       setBusy(false);
     } else {
+      setDebtReminderEnabled(false);
+      setNotifyEnabled(false);
+      await cancelAllDebtReminders();
       setNotice('ปิดการแจ้งเตือนแล้ว');
     }
   };
@@ -132,7 +138,7 @@ const SettingsPage: React.FC = () => {
           )}
         </div>
 
-        <div style={{ marginTop: 24 }}>
+        <div style={{ marginTop: 24, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
           <IonButton
             expand="block"
             fill="outline"

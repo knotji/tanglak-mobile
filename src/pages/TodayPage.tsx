@@ -3,7 +3,15 @@ import { IonContent, IonIcon, IonPage, IonRefresher, IonRefresherContent, IonSpi
 import { cardOutline, scanOutline, trendingDownOutline } from 'ionicons/icons';
 import PageHeader from '@/components/PageHeader';
 import TransactionList from '@/components/TransactionList';
+import DebtFreedomWidget from '@/components/DebtFreedomWidget';
+import DailySpendCard from '@/components/DailySpendCard';
 import { listTodayTransactions, type Transaction } from '@/lib/transactions';
+import { listDebts, type Debt } from '@/lib/debts';
+import { getOverviewSnapshot, type OverviewSnapshot } from '@/lib/overview';
+import { scheduleDebtReminders } from '@/lib/notifications';
+import { isDebtReminderEnabled } from '@/lib/notificationPrefs';
+import { calculateDailySpendLimit } from '@/lib/dailySpendLimit';
+import { usePrivacyMode, maskAmount } from '@/lib/privacyStore';
 import { formatTHB } from '@/lib/money';
 
 function sumSatang(transactions: Transaction[], types: Transaction['type'][]): number {
@@ -12,13 +20,26 @@ function sumSatang(transactions: Transaction[], types: Transaction['type'][]): n
 
 const TodayPage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
+  const [debts, setDebts] = useState<Debt[]>([]);
+  const [snapshot, setSnapshot] = useState<OverviewSnapshot | null>(null);
   const [error, setError] = useState('');
   const router = useIonRouter();
+  const isPrivacy = usePrivacyMode();
 
   const load = async (event?: CustomEvent) => {
     try {
-      setTransactions(await listTodayTransactions());
+      const [txs, debtList, snap] = await Promise.all([
+        listTodayTransactions(),
+        listDebts().catch(() => []),
+        getOverviewSnapshot().catch(() => null),
+      ]);
+      setTransactions(txs);
+      setDebts(debtList);
+      setSnapshot(snap);
       setError('');
+      if (isDebtReminderEnabled()) {
+        void scheduleDebtReminders(debtList);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'โหลดข้อมูลไม่สำเร็จ');
     } finally {
@@ -32,6 +53,14 @@ const TodayPage: React.FC = () => {
 
   const expenseSatang = transactions ? sumSatang(transactions, ['expense', 'debt_payment']) : 0;
   const incomeSatang = transactions ? sumSatang(transactions, ['income', 'refund']) : 0;
+
+  const monthSpentSatang = snapshot ? snapshot.totals.livingExpenseSatang + snapshot.totals.debtPaymentSatang : expenseSatang;
+  const dailySpend = calculateDailySpendLimit(
+    monthSpentSatang,
+    expenseSatang,
+    snapshot?.totalMinimumDueSatang ?? 0,
+    snapshot?.plannedIncomeSatang ?? 0,
+  );
 
   return (
     <IonPage>
@@ -54,18 +83,18 @@ const TodayPage: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <span className="tl-hero-title">รายจ่ายวันนี้</span>
-                  <div className="tl-hero-amount">{formatTHB(expenseSatang)}</div>
+                  <div className="tl-hero-amount">{maskAmount(formatTHB(expenseSatang), isPrivacy)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <span className="tl-hero-title">รายรับวันนี้</span>
                   <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: '#34d399', fontVariantNumeric: 'tabular-nums' }}>
-                    {formatTHB(incomeSatang, { showPositiveSign: true })}
+                    {maskAmount(formatTHB(incomeSatang, { showPositiveSign: true }), isPrivacy)}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="tl-quick-actions">
+            <div className="tl-quick-actions" style={{ marginBottom: 16 }}>
               <button
                 type="button"
                 onClick={() => router.push('/tabs/upload', 'forward', 'push')}
@@ -94,18 +123,24 @@ const TodayPage: React.FC = () => {
                 <span>จัดการหนี้สิน</span>
               </button>
             </div>
+
+            {/* Daily Safe Spend Limit Card */}
+            <DailySpendCard daily={dailySpend} />
+
+            {/* Debt Freedom Date Widget */}
+            <DebtFreedomWidget debts={debts} />
           </>
         )}
 
         {transactions?.length === 0 && (
-          <div className="tl-card tl-empty" style={{ marginTop: 16 }}>
+          <div className="tl-card tl-empty" style={{ marginTop: 16, marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
             <p style={{ margin: 0, fontWeight: 600 }}>วันนี้ยังไม่มีรายการ</p>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--tl-text-secondary)' }}>สแกนสลิปหรือบันทึกรายการเพื่อเริ่มติดตาม</p>
           </div>
         )}
 
         {transactions && transactions.length > 0 && (
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 16, marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
             <TransactionList
               transactions={transactions}
               onDeleted={(id) => setTransactions((current) => current?.filter((t) => t.id !== id) ?? current)}
