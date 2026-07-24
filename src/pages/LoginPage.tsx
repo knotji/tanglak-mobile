@@ -52,7 +52,7 @@ const LoginPage: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px 20px', maxWidth: 440, margin: '0 auto' }}>
+        <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px 20px calc(24px + env(safe-area-inset-bottom, 0px))', maxWidth: 440, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div
               style={{

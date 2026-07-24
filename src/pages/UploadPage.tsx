@@ -11,7 +11,6 @@ import {
   IonSelectOption,
   IonSpinner,
   IonText,
-  IonToggle,
   useIonViewWillEnter,
 } from '@ionic/react';
 import { cameraOutline, checkmarkCircle, imagesOutline, warningOutline, sparklesOutline } from 'ionicons/icons';
@@ -23,6 +22,7 @@ import { listDebts, type Debt } from '@/lib/debts';
 import { nowBangkokDatetimeLocal } from '@/lib/bangkokDate';
 import { isoInstantToBangkokDatetimeLocal } from '@/lib/date';
 import { checkDuplicateTransaction } from '@/lib/transactions';
+import { findCategoryForMerchant, learnMerchantCategoryRule } from '@/lib/merchantRules';
 import PageHeader from '@/components/PageHeader';
 import FieldLabel from '@/components/FieldLabel';
 import DateTimeField from '@/components/DateTimeField';
@@ -59,12 +59,18 @@ function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
   const type = result.transaction?.type;
   const savableType: SavableType =
     type === 'income' || type === 'transfer' || type === 'refund' || type === 'debt_payment' ? type : 'expense';
+  const merchant = result.transaction?.merchant ?? '';
+  let categoryId = result.transaction?.categoryId ?? '';
+  if ((!categoryId || categoryId === 'other') && merchant) {
+    const matched = findCategoryForMerchant(merchant);
+    if (matched) categoryId = matched;
+  }
   return {
     type: savableType,
     amount: result.transaction?.amount !== undefined ? String(result.transaction.amount) : '',
-    merchant: result.transaction?.merchant ?? '',
+    merchant,
     datetimeLocal: result.transaction?.occurredAt ? isoInstantToBangkokDatetimeLocal(result.transaction.occurredAt) : '',
-    categoryId: result.transaction?.categoryId ?? '',
+    categoryId,
     debtId: '',
     refNo: result.transaction?.refNo,
     bankChannel: result.transaction?.bankChannel ?? result.transaction?.paymentMethod,
@@ -91,7 +97,6 @@ const UploadPage: React.FC = () => {
   const [unclearFields, setUnclearFields] = useState<string[]>([]);
   const [draft, setDraft] = useState<DraftForm | null>(null);
   const [debts, setDebts] = useState<Debt[]>([]);
-  const [autoSave, setAutoSave] = useState(false);
 
   useIonViewWillEnter(() => {
     void listDebts().then(setDebts).catch(() => setDebts([]));
@@ -137,19 +142,20 @@ const UploadPage: React.FC = () => {
     }
   };
 
-  const saveEntry = async (entry: QueueEntry): Promise<boolean> => {
+  const saveEntry = async (entry: QueueEntry): Promise<'saved' | 'duplicate' | 'incomplete'> => {
     const entryDraft = entry.draft;
     const amountNumber = Number(entryDraft.amount);
-    if (!entryDraft.amount || !Number.isFinite(amountNumber) || amountNumber <= 0) return false;
+    if (!entryDraft.amount || !Number.isFinite(amountNumber) || amountNumber <= 0) return 'incomplete';
     const occurredAt = datetimeLocalToIso(entryDraft.datetimeLocal);
-    if (!occurredAt) return false;
-    if (entryDraft.type === 'debt_payment' && !entryDraft.debtId) return false;
+    if (!occurredAt) return 'incomplete';
+    if (entryDraft.type === 'debt_payment' && !entryDraft.debtId) return 'incomplete';
 
     const amountSatang = Math.round(amountNumber * 100);
     const existing = await checkDuplicateTransaction({ amountSatang, occurredAt });
     if (existing) {
       setSkippedDuplicateCount((c) => c + 1);
-      return false;
+      if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
+      return 'duplicate';
     }
 
     try {
@@ -165,10 +171,14 @@ const UploadPage: React.FC = () => {
           categoryLabel: category?.label,
         };
         await saveTransaction(input);
+        if (entryDraft.merchant && entryDraft.categoryId) {
+          learnMerchantCategoryRule(entryDraft.merchant, entryDraft.categoryId);
+        }
       }
-      return true;
+      if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
+      return 'saved';
     } catch {
-      return false;
+      return 'incomplete';
     }
   };
 
@@ -185,17 +195,6 @@ const UploadPage: React.FC = () => {
       try {
         const result = await extractDocument(files[i]);
         const d = draftFromExtraction(result);
-
-        const amountNum = Number(d.amount);
-        if (amountNum > 0 && d.datetimeLocal) {
-          const amountSatang = Math.round(amountNum * 100);
-          const occurredAt = datetimeLocalToIso(d.datetimeLocal);
-          const dup = await checkDuplicateTransaction({ amountSatang, occurredAt });
-          if (dup) {
-            d.isDuplicate = true;
-          }
-        }
-
         entries.push({ previewUrl: url, draft: d, unclearFields: result.unclearFields });
       } catch {
         failCount += 1;
@@ -210,24 +209,31 @@ const UploadPage: React.FC = () => {
       return;
     }
 
-    if (autoSave) {
-      setStep('saving');
-      let saved = 0;
-      let notSaved = failCount;
-      for (const entry of entries) {
-        if (await saveEntry(entry)) saved += 1; else notSaved += 1;
-        if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
+    setStep('saving');
+    let saved = 0;
+    const incompleteEntries: QueueEntry[] = [];
+
+    for (const entry of entries) {
+      const res = await saveEntry(entry);
+      if (res === 'saved') {
+        saved += 1;
+      } else if (res === 'duplicate') {
+        // duplicate skipped, already counted
+      } else {
+        incompleteEntries.push(entry);
       }
-      setSavedCount(saved);
-      setNotSavedCount(notSaved);
-      setQueue([]);
-      setStep('saved');
-      return;
     }
 
-    setNotSavedCount(failCount);
-    setQueue(entries);
-    enterQueueItem(0, entries);
+    setSavedCount(saved);
+    if (incompleteEntries.length === 0) {
+      setNotSavedCount(failCount);
+      setQueue([]);
+      setStep('saved');
+    } else {
+      setNotSavedCount(failCount);
+      setQueue(incompleteEntries);
+      enterQueueItem(0, incompleteEntries);
+    }
   };
 
   const handleManualEntry = () => {
@@ -290,24 +296,10 @@ const UploadPage: React.FC = () => {
   return (
     <IonPage>
       <IonContent className="ion-padding" fullscreen>
-        <PageHeader title="สแกนสลิป" subtitle="ถ่ายรูปสลิปให้ AI อ่านข้อมูลให้ ทีละใบหรือหลายใบพร้อมกันก็ได้" />
+        <PageHeader title="สแกนสลิป" subtitle="ถ่ายรูปสลิปให้ AI อ่านข้อมูลและบันทึกอัตโนมัติ" />
 
         {step === 'pick' && (
           <>
-            <div className="tl-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>บันทึกอัตโนมัติ</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)' }}>
-                  ข้ามหน้าตรวจสอบ บันทึกทันทีตามที่ AI อ่านได้ (รายการที่ข้อมูลไม่ครบจะไม่ถูกบันทึก)
-                </p>
-              </div>
-              <IonToggle
-                checked={autoSave}
-                onIonChange={(e) => setAutoSave(e.detail.checked)}
-                aria-label="บันทึกอัตโนมัติ"
-                style={{ flexShrink: 0 }}
-              />
-            </div>
             <label className="upload-picker">
               <IonIcon icon={cameraOutline} style={{ fontSize: 32 }} />
               <p>ถ่ายรูปสลิป</p>
@@ -338,14 +330,16 @@ const UploadPage: React.FC = () => {
                 }}
               />
             </label>
-            <IonButton expand="block" fill="clear" className="ion-margin-top" onClick={handleManualEntry}>
-              กรอกเองไม่ต้องสแกน
-            </IonButton>
-            {error && (
-              <IonText color="danger">
-                <p className="ion-margin-top">{error}</p>
-              </IonText>
-            )}
+            <div style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
+              <IonButton expand="block" fill="clear" className="ion-margin-top" onClick={handleManualEntry}>
+                กรอกเองไม่ต้องสแกน
+              </IonButton>
+              {error && (
+                <IonText color="danger">
+                  <p className="ion-margin-top">{error}</p>
+                </IonText>
+              )}
+            </div>
           </>
         )}
 
@@ -534,70 +528,73 @@ const UploadPage: React.FC = () => {
               </IonText>
             )}
 
-            <IonButton
-              expand="block"
-              className="ion-margin-top"
-              disabled={step === 'saving'}
-              onClick={handleSave}
-              style={{
-                '--border-radius': '999px',
-                '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)',
-                '--box-shadow': '0 8px 20px -4px rgba(15, 23, 42, 0.3)',
-                fontWeight: 700,
-                fontSize: 15,
-                minHeight: 50,
-              }}
-            >
-              {step === 'saving' ? <IonSpinner name="dots" /> : isBatch && queueIndex < queue.length - 1 ? 'บันทึกแล้วไปต่อ' : 'บันทึกรายการ'}
-            </IonButton>
-            {isBatch && (
+            <div style={{ marginTop: 24, paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}>
               <IonButton
                 expand="block"
-                fill="outline"
                 disabled={step === 'saving'}
-                onClick={handleSkip}
+                onClick={handleSave}
                 style={{
                   '--border-radius': '999px',
-                  '--border-color': '#cbd5e1',
-                  '--color': '#0f172a',
+                  '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)',
+                  '--box-shadow': '0 8px 20px -4px rgba(15, 23, 42, 0.3)',
                   fontWeight: 700,
-                  fontSize: 14,
-                  minHeight: 46,
-                  marginTop: 10,
+                  fontSize: 15,
+                  minHeight: 50,
                 }}
               >
-                ข้ามรายการนี้
+                {step === 'saving' ? <IonSpinner name="dots" /> : isBatch && queueIndex < queue.length - 1 ? 'บันทึกแล้วไปต่อ' : 'บันทึกรายการ'}
               </IonButton>
-            )}
-            <IonButton expand="block" fill="clear" disabled={step === 'saving'} onClick={reset} style={{ fontWeight: 600, marginTop: 4 }}>
-              {isBatch ? 'ยกเลิกทั้งหมด' : 'ยกเลิก'}
-            </IonButton>
+              {isBatch && (
+                <IonButton
+                  expand="block"
+                  fill="outline"
+                  disabled={step === 'saving'}
+                  onClick={handleSkip}
+                  style={{
+                    '--border-radius': '999px',
+                    '--border-color': '#cbd5e1',
+                    '--color': '#0f172a',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    minHeight: 46,
+                    marginTop: 10,
+                  }}
+                >
+                  ข้ามรายการนี้
+                </IonButton>
+              )}
+              <IonButton expand="block" fill="clear" disabled={step === 'saving'} onClick={reset} style={{ fontWeight: 600, marginTop: 4 }}>
+                {isBatch ? 'ยกเลิกทั้งหมด' : 'ยกเลิก'}
+              </IonButton>
+            </div>
           </>
         )}
 
         {step === 'saved' && (
-          <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
-            <IonIcon icon={checkmarkCircle} color="success" style={{ fontSize: 48 }} />
-            <p style={{ fontWeight: 700, marginTop: 12 }}>
-              {savedCount > 1 || notSavedCount > 0 || skippedDuplicateCount > 0
-                ? `บันทึกแล้ว ${savedCount} รายการ${skippedDuplicateCount > 0 ? ` · ข้ามสลิปซ้ำ ${skippedDuplicateCount} รายการ` : ''}${notSavedCount > 0 ? ` · ไม่ได้บันทึก ${notSavedCount} รายการ` : ''}`
-                : 'บันทึกรายการแล้ว'}
-            </p>
-            <IonButton
-              expand="block"
-              className="ion-margin-top"
-              onClick={reset}
-              style={{
-                '--border-radius': '999px',
-                '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)',
-                '--box-shadow': '0 8px 20px -4px rgba(15, 23, 42, 0.3)',
-                fontWeight: 700,
-                fontSize: 15,
-                minHeight: 50,
-              }}
-            >
-              สแกนสลิปอีก
-            </IonButton>
+          <div style={{ paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}>
+            <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
+              <IonIcon icon={checkmarkCircle} color="success" style={{ fontSize: 48 }} />
+              <p style={{ fontWeight: 700, marginTop: 12 }}>
+                {savedCount > 1 || notSavedCount > 0 || skippedDuplicateCount > 0
+                  ? `บันทึกแล้ว ${savedCount} รายการ${skippedDuplicateCount > 0 ? ` · ข้ามสลิปซ้ำ ${skippedDuplicateCount} รายการ` : ''}${notSavedCount > 0 ? ` · ไม่ได้บันทึก ${notSavedCount} รายการ` : ''}`
+                  : 'บันทึกรายการแล้ว'}
+              </p>
+              <IonButton
+                expand="block"
+                className="ion-margin-top"
+                onClick={reset}
+                style={{
+                  '--border-radius': '999px',
+                  '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)',
+                  '--box-shadow': '0 8px 20px -4px rgba(15, 23, 42, 0.3)',
+                  fontWeight: 700,
+                  fontSize: 15,
+                  minHeight: 50,
+                }}
+              >
+                สแกนสลิปอีก
+              </IonButton>
+            </div>
           </div>
         )}
       </IonContent>

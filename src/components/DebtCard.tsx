@@ -10,6 +10,7 @@ import {
 } from '@/lib/debts';
 import { formatTHB } from '@/lib/money';
 import { formatThaiDateLabel } from '@/lib/date';
+import { usePrivacyMode, maskAmount } from '@/lib/privacyStore';
 
 const STATUS_ICON = {
   not_yet_due: calendarClearOutline,
@@ -41,6 +42,7 @@ const DebtCard: React.FC<{ debt: Debt }> = ({ debt }) => {
   const progress = Math.min(100, Math.max(0, paymentProgress(debt) * 100));
   const remaining = remainingToMinimum(debt);
   const tone = STATUS_TONE[status];
+  const isPrivacy = usePrivacyMode();
 
   return (
     <article className="tl-card">
@@ -69,9 +71,9 @@ const DebtCard: React.FC<{ debt: Debt }> = ({ debt }) => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
-        <Stat label="ยอดคงเหลือ">{formatTHB(debt.outstandingBalanceSatang ?? 0)}</Stat>
-        <Stat label="ยอดเรียกเก็บรอบนี้">{formatTHB(debt.amountDueSatang ?? 0)}</Stat>
-        <Stat label="ขั้นต่ำเดือนนี้">{formatTHB(debt.minimumPaymentSatang ?? 0)}</Stat>
+        <Stat label="ยอดคงเหลือ">{maskAmount(formatTHB(debt.outstandingBalanceSatang ?? 0), isPrivacy)}</Stat>
+        <Stat label="ยอดเรียกเก็บรอบนี้">{maskAmount(formatTHB(debt.amountDueSatang ?? 0), isPrivacy)}</Stat>
+        <Stat label="ขั้นต่ำเดือนนี้">{maskAmount(formatTHB(debt.minimumPaymentSatang ?? 0), isPrivacy)}</Stat>
         <Stat label="ครบกำหนด">{debt.dueDate ? (formatThaiDateLabel(debt.dueDate) ?? debt.dueDate) : 'ยังไม่ระบุ'}</Stat>
       </div>
 
@@ -85,7 +87,7 @@ const DebtCard: React.FC<{ debt: Debt }> = ({ debt }) => {
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 6 }}>
           <span style={{ color: 'var(--tl-text-secondary)', fontWeight: 600 }}>ชำระแล้วรอบนี้</span>
           <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-            {formatTHB(debt.amountPaidThisCycleSatang)} จาก {formatTHB(debt.minimumPaymentSatang ?? 0)}
+            {maskAmount(formatTHB(debt.amountPaidThisCycleSatang), isPrivacy)} จาก {maskAmount(formatTHB(debt.minimumPaymentSatang ?? 0), isPrivacy)}
           </span>
         </div>
         <div style={{ height: 8, borderRadius: 999, background: 'var(--tl-muted)', overflow: 'hidden' }}>
@@ -103,7 +105,7 @@ const DebtCard: React.FC<{ debt: Debt }> = ({ debt }) => {
 
       {remaining > 0 && (
         <p style={{ marginTop: 12, fontSize: 13, fontWeight: 700, color: 'var(--tl-debt)' }}>
-          ยังขาดขั้นต่ำ {formatTHB(remaining)}
+          ยังขาดขั้นต่ำ {maskAmount(formatTHB(remaining), isPrivacy)}
         </p>
       )}
     </article>

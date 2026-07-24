@@ -391,7 +391,7 @@ const DebtSimulatePage: React.FC = () => {
               )}
             </div>
 
-            <div className="tl-card" style={{ marginTop: 12 }}>
+            <div className="tl-card" style={{ marginTop: 12, marginBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}>
               <button
                 type="button"
                 className="tl-tap-row"

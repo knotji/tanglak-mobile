@@ -169,7 +169,7 @@ const DebtStrategyPage: React.FC = () => {
               );
             })}
 
-            <p style={{ fontSize: 11.5, color: 'var(--tl-text-secondary)', marginTop: 14, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 11.5, color: 'var(--tl-text-secondary)', marginTop: 14, marginBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))', lineHeight: 1.6 }}>
               ตัวเลขเป็นการประมาณการเพื่อช่วยวางแผนเท่านั้น ไม่ใช่ยอดยืนยันจากสถาบันการเงิน สมมติว่าดอกเบี้ยและยอดขั้นต่ำคงที่ตลอด และจ่ายตรงเวลาทุกงวด
             </p>
           </>

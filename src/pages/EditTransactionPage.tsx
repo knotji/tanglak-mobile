@@ -326,7 +326,7 @@ const EditTransactionPage: React.FC = () => {
             )}
 
             {/* Actions Footer */}
-            <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}>
               <IonButton
                 expand="block"
                 disabled={busy}

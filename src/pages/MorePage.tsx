@@ -25,7 +25,7 @@ const MorePage: React.FC = () => {
     <IonPage>
       <IonContent className="ion-padding" fullscreen>
         <PageHeader title="เพิ่มเติม" subtitle="เมนูและการจัดการระบบ" />
-        <div className="tl-card" style={{ padding: '6px 16px' }}>
+        <div className="tl-card" style={{ padding: '6px 16px', marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
           {MENU_ITEMS.map((item, index) => (
             <button
               key={item.path}

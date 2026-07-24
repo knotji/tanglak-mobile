@@ -128,7 +128,7 @@ const BudgetEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="tl-card">
+            <div className="tl-card" style={{ marginBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))' }}>
               <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700 }}>งบต่อหมวดหมู่</p>
               {categories.length === 0 && (
                 <p style={{ fontSize: 13, color: 'var(--tl-text-secondary)' }}>ยังไม่มีหมวดหมู่ที่ตั้งงบ — เพิ่มด้านล่าง</p>

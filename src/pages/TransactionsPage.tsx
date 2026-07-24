@@ -105,16 +105,18 @@ const TransactionsPage: React.FC = () => {
         )}
 
         {transactions?.length === 0 && (
-          <div className="tl-card tl-empty">
+          <div className="tl-card tl-empty" style={{ marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
             <p>{isCurrentMonth ? 'ยังไม่มีรายการเดือนนี้ — ลองสแกนสลิปแรกของคุณดู' : 'ไม่มีรายการในเดือนนี้'}</p>
           </div>
         )}
 
         {transactions && transactions.length > 0 && (
-          <TransactionList
-            transactions={transactions}
-            onDeleted={(id) => setTransactions((current) => current?.filter((t) => t.id !== id) ?? current)}
-          />
+          <div style={{ marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
+            <TransactionList
+              transactions={transactions}
+              onDeleted={(id) => setTransactions((current) => current?.filter((t) => t.id !== id) ?? current)}
+            />
+          </div>
         )}
       </IonContent>
     </IonPage>

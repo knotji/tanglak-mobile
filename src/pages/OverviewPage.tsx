@@ -3,20 +3,25 @@ import { IonBackButton, IonButtons, IonContent, IonHeader, IonPage, IonSpinner, 
 import PageHeader from '@/components/PageHeader';
 import CategoryDonutChart, { type CategoryDonutItem } from '@/components/CategoryDonutChart';
 import CashFlowBarChart, { type MonthlyCashFlowPoint } from '@/components/CashFlowBarChart';
+import FinancialHealthCard from '@/components/FinancialHealthCard';
 import { getOverviewSnapshot, type OverviewSnapshot } from '@/lib/overview';
 import { listTransactionsForMonth } from '@/lib/transactions';
+import { listDebts, type Debt } from '@/lib/debts';
 import { currentBangkokMonth, shiftBangkokMonth } from '@/lib/bangkokDate';
+import { calculateFinancialHealthScore } from '@/lib/financialHealthScore';
+import { usePrivacyMode, maskAmount } from '@/lib/privacyStore';
 import { formatTHB } from '@/lib/money';
 
 const PALETTE = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#ec4899', '#14b8a6', '#f97316'];
 
 const FlowRow: React.FC<{ label: string; amountSatang: number; direction: 'in' | 'out' }> = ({ label, amountSatang, direction }) => {
   const isExpense = direction === 'out';
+  const isPrivacy = usePrivacyMode();
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
       <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--tl-text-secondary)' }}>{label}</span>
       <span className={`tl-amount ${isExpense ? 'tl-amount--expense' : ''}`} style={{ fontSize: 15 }}>
-        {formatTHB(isExpense ? -amountSatang : amountSatang, { showPositiveSign: !isExpense })}
+        {maskAmount(formatTHB(isExpense ? -amountSatang : amountSatang, { showPositiveSign: !isExpense }), isPrivacy)}
       </span>
     </div>
   );
@@ -24,19 +29,23 @@ const FlowRow: React.FC<{ label: string; amountSatang: number; direction: 'in' |
 
 const OverviewPage: React.FC = () => {
   const [snapshot, setSnapshot] = useState<OverviewSnapshot | null>(null);
+  const [debts, setDebts] = useState<Debt[]>([]);
   const [donutItems, setDonutItems] = useState<CategoryDonutItem[]>([]);
   const [totalExpenseSatang, setTotalExpenseSatang] = useState(0);
   const [cashFlowHistory, setCashFlowHistory] = useState<MonthlyCashFlowPoint[]>([]);
   const [error, setError] = useState('');
+  const isPrivacy = usePrivacyMode();
 
   useIonViewWillEnter(() => {
     const currentMonth = currentBangkokMonth();
     void Promise.all([
       getOverviewSnapshot(),
       listTransactionsForMonth(currentMonth),
+      listDebts().catch(() => []),
     ])
-      .then(([snap, txs]) => {
+      .then(([snap, txs, debtList]) => {
         setSnapshot(snap);
+        setDebts(debtList);
 
         // Calculate Category Breakdown
         const categoryMap = new Map<string, number>();
@@ -84,6 +93,12 @@ const OverviewPage: React.FC = () => {
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'โหลดภาพรวมไม่สำเร็จ'));
   });
 
+  const health = calculateFinancialHealthScore(
+    debts,
+    totalExpenseSatang,
+    snapshot?.plannedIncomeSatang ?? 0,
+  );
+
   return (
     <IonPage>
       <IonHeader className="ion-no-border">
@@ -113,12 +128,15 @@ const OverviewPage: React.FC = () => {
                   fontSize: 34,
                 }}
               >
-                {formatTHB(snapshot.cashRemainingSatang)}
+                {maskAmount(formatTHB(snapshot.cashRemainingSatang), isPrivacy)}
               </div>
               <p style={{ margin: '6px 0 0', fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>
-                จากรายรับรวม {formatTHB(snapshot.plannedIncomeSatang)}
+                จากรายรับรวม {maskAmount(formatTHB(snapshot.plannedIncomeSatang), isPrivacy)}
               </p>
             </div>
+
+            {/* Financial Health Score Card */}
+            <FinancialHealthCard health={health} />
 
             {/* Category Donut Breakdown */}
             <CategoryDonutChart items={donutItems} totalSatang={totalExpenseSatang} />
@@ -126,7 +144,7 @@ const OverviewPage: React.FC = () => {
             {/* Cash Flow Historical Trend */}
             <CashFlowBarChart data={cashFlowHistory} />
 
-            <div className="tl-card" style={{ padding: '8px 18px', marginTop: 14 }}>
+            <div className="tl-card" style={{ padding: '8px 18px', marginTop: 14, marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
               <FlowRow label="รายรับวางแผนไว้" amountSatang={snapshot.plannedIncomeSatang} direction="in" />
               <div style={{ borderTop: '1px solid var(--tl-border)' }}>
                 <FlowRow label="ค่าใช้ชีวิต" amountSatang={snapshot.totals.livingExpenseSatang} direction="out" />
@@ -142,7 +160,7 @@ const OverviewPage: React.FC = () => {
             </div>
 
             {snapshot.debtCount > 0 && (
-              <div className="tl-card" style={{ marginTop: 14 }}>
+              <div className="tl-card" style={{ marginTop: 14, marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
                 <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--ion-text-color)' }}>
                   ภาพรวมหนี้สิน ({snapshot.debtCount} รายการ)
                 </p>

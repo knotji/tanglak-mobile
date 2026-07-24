@@ -15,6 +15,7 @@ import DebtStrategyPage from '@/pages/DebtStrategyPage';
 import BudgetEditPage from '@/pages/BudgetEditPage';
 import BiometricLockGuard from '@/components/BiometricLockGuard';
 import AppSplashScreen from '@/components/AppSplashScreen';
+import PrivacyBlurOverlay from '@/components/PrivacyBlurOverlay';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -100,6 +101,7 @@ const App: React.FC = () => {
 
   return (
     <IonApp>
+      <PrivacyBlurOverlay />
       {checkingSession && <AppSplashScreen message="กำลังเริ่มต้นใช้งานแอป…" />}
       {!checkingSession && (
         <BiometricLockGuard>

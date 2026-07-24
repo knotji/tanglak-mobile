@@ -3,6 +3,7 @@ import { arrowDownCircle, arrowUpCircle, cardOutline, chevronForwardOutline, swa
 import type { Transaction } from '@/lib/transactions';
 import { formatTHB } from '@/lib/money';
 import { formatThaiDateTimeLabel, isoInstantToBangkokDatetimeLocal } from '@/lib/date';
+import { usePrivacyMode, maskAmount } from '@/lib/privacyStore';
 
 const TYPE_ICON: Record<Transaction['type'], string> = {
   income: arrowDownCircle,
@@ -41,6 +42,7 @@ const TransactionRow: React.FC<{ transaction: Transaction }> = ({ transaction })
   const tone = TYPE_TONE[transaction.type];
   const signedSatang = isIncoming ? transaction.amountSatang : -transaction.amountSatang;
   const time = formatThaiDateTimeLabel(isoInstantToBangkokDatetimeLocal(transaction.occurredAt));
+  const isPrivacy = usePrivacyMode();
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
@@ -57,7 +59,7 @@ const TransactionRow: React.FC<{ transaction: Transaction }> = ({ transaction })
         </p>
       </div>
       <span className={`tl-amount tl-amount--${tone}`} style={{ fontSize: 15, fontWeight: 700 }}>
-        {formatTHB(signedSatang, { showPositiveSign: isIncoming })}
+        {maskAmount(formatTHB(signedSatang, { showPositiveSign: isIncoming }), isPrivacy)}
       </span>
       <IonIcon icon={chevronForwardOutline} style={{ fontSize: 16, flexShrink: 0, color: '#94a3b8', opacity: 0.7 }} />
     </div>

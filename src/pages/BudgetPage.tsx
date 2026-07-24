@@ -109,7 +109,7 @@ const BudgetPage: React.FC = () => {
             </div>
 
             {summary.categories.length > 0 && (
-              <div className="tl-card" style={{ padding: '6px 18px', marginTop: 14 }}>
+              <div className="tl-card" style={{ padding: '6px 18px', marginTop: 14, marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
                 {summary.categories.map((category, index) => (
                   <div key={category.label} style={{ borderTop: index === 0 ? 'none' : '1px solid var(--tl-border)' }}>
                     <CategoryRow category={category} />

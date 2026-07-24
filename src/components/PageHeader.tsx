@@ -1,9 +1,40 @@
-const PageHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
-  <header className="tl-page-header">
-    <p className="tl-brand">ตั้งหลัก</p>
-    <h1>{title}</h1>
-    {subtitle && <p className="tl-subtitle">{subtitle}</p>}
-  </header>
-);
+import { IonIcon } from '@ionic/react';
+import { eyeOutline, eyeOffOutline } from 'ionicons/icons';
+import { usePrivacyMode, togglePrivacyMode } from '@/lib/privacyStore';
+
+const PageHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => {
+  const isPrivacy = usePrivacyMode();
+
+  return (
+    <header className="tl-page-header" style={{ position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p className="tl-brand">ตั้งหลัก</p>
+        <button
+          type="button"
+          onClick={() => togglePrivacyMode()}
+          aria-label={isPrivacy ? 'แสดงตัวเลข' : 'ซ่อนตัวเลข'}
+          style={{
+            background: 'rgba(15, 23, 42, 0.05)',
+            border: 'none',
+            borderRadius: 999,
+            padding: '6px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 12,
+            fontWeight: 600,
+            color: isPrivacy ? '#6366f1' : '#64748b',
+            cursor: 'pointer',
+          }}
+        >
+          <IonIcon icon={isPrivacy ? eyeOffOutline : eyeOutline} style={{ fontSize: 16 }} />
+          <span>{isPrivacy ? 'ซ่อนยอดเงิน' : 'แสดงยอดเงิน'}</span>
+        </button>
+      </div>
+      <h1>{title}</h1>
+      {subtitle && <p className="tl-subtitle">{subtitle}</p>}
+    </header>
+  );
+};
 
 export default PageHeader;

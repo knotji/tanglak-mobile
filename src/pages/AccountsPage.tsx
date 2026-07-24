@@ -50,7 +50,7 @@ const AccountsPage: React.FC = () => {
         )}
 
         {accounts && accounts.length > 0 && (
-          <div className="tl-card" style={{ padding: '6px 16px' }}>
+          <div className="tl-card" style={{ padding: '6px 16px', marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
             {accounts.map((account, index) => {
               const isCard = account.accountType.includes('card');
               return (
