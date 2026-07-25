@@ -92,14 +92,25 @@ const UploadPage: React.FC = () => {
   const [savedCount, setSavedCount] = useState(0);
   const [notSavedCount, setNotSavedCount] = useState(0);
   const [skippedDuplicateCount, setSkippedDuplicateCount] = useState(0);
+  const [saveErrorMessages, setSaveErrorMessages] = useState<string[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [unclearFields, setUnclearFields] = useState<string[]>([]);
   const [draft, setDraft] = useState<DraftForm | null>(null);
   const [debts, setDebts] = useState<Debt[]>([]);
+  const [debtsLoadFailed, setDebtsLoadFailed] = useState(false);
 
   useIonViewWillEnter(() => {
-    void listDebts().then(setDebts).catch(() => setDebts([]));
+    setDebtsLoadFailed(false);
+    void listDebts()
+      .then(setDebts)
+      .catch(() => {
+        // An empty list here would render identically to "user has no debts
+        // yet", silently blocking the debt-payment picker below with no
+        // indication the load actually failed.
+        setDebts([]);
+        setDebtsLoadFailed(true);
+      });
   });
 
   const reset = () => {
@@ -113,6 +124,7 @@ const UploadPage: React.FC = () => {
     setSavedCount(0);
     setNotSavedCount(0);
     setSkippedDuplicateCount(0);
+    setSaveErrorMessages([]);
     setPreviewUrl(null);
     setError('');
     setUnclearFields([]);
@@ -142,20 +154,29 @@ const UploadPage: React.FC = () => {
     }
   };
 
-  const saveEntry = async (entry: QueueEntry): Promise<'saved' | 'duplicate' | 'incomplete'> => {
+  type SaveEntryResult = { kind: 'saved' | 'duplicate' | 'incomplete' } | { kind: 'error'; message: string };
+
+  const saveEntry = async (entry: QueueEntry): Promise<SaveEntryResult> => {
     const entryDraft = entry.draft;
     const amountNumber = Number(entryDraft.amount);
-    if (!entryDraft.amount || !Number.isFinite(amountNumber) || amountNumber <= 0) return 'incomplete';
+    if (!entryDraft.amount || !Number.isFinite(amountNumber) || amountNumber <= 0) return { kind: 'incomplete' };
     const occurredAt = datetimeLocalToIso(entryDraft.datetimeLocal);
-    if (!occurredAt) return 'incomplete';
-    if (entryDraft.type === 'debt_payment' && !entryDraft.debtId) return 'incomplete';
+    if (!occurredAt) return { kind: 'incomplete' };
+    if (entryDraft.type === 'debt_payment' && !entryDraft.debtId) return { kind: 'incomplete' };
 
     const amountSatang = Math.round(amountNumber * 100);
-    const existing = await checkDuplicateTransaction({ amountSatang, occurredAt });
-    if (existing) {
-      setSkippedDuplicateCount((c) => c + 1);
-      if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
-      return 'duplicate';
+    try {
+      const existing = await checkDuplicateTransaction({ amountSatang, occurredAt });
+      if (existing) {
+        setSkippedDuplicateCount((c) => c + 1);
+        if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
+        return { kind: 'duplicate' };
+      }
+    } catch (cause) {
+      // Don't silently treat "couldn't check for a duplicate" as "no duplicate" --
+      // that would disable the app's only anti-double-save guard exactly when the
+      // network is flaky, which is also when a retry-tap is most likely.
+      return { kind: 'error', message: cause instanceof Error ? cause.message : 'ตรวจสอบรายการซ้ำไม่สำเร็จ' };
     }
 
     try {
@@ -176,9 +197,9 @@ const UploadPage: React.FC = () => {
         }
       }
       if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
-      return 'saved';
-    } catch {
-      return 'incomplete';
+      return { kind: 'saved' };
+    } catch (cause) {
+      return { kind: 'error', message: cause instanceof Error ? cause.message : 'บันทึกรายการไม่สำเร็จ' };
     }
   };
 
@@ -212,19 +233,24 @@ const UploadPage: React.FC = () => {
     setStep('saving');
     let saved = 0;
     const incompleteEntries: QueueEntry[] = [];
+    const errorMessages: string[] = [];
 
     for (const entry of entries) {
       const res = await saveEntry(entry);
-      if (res === 'saved') {
+      if (res.kind === 'saved') {
         saved += 1;
-      } else if (res === 'duplicate') {
+      } else if (res.kind === 'duplicate') {
         // duplicate skipped, already counted
+      } else if (res.kind === 'error') {
+        failCount += 1;
+        if (!errorMessages.includes(res.message)) errorMessages.push(res.message);
       } else {
         incompleteEntries.push(entry);
       }
     }
 
     setSavedCount(saved);
+    setSaveErrorMessages(errorMessages);
     if (incompleteEntries.length === 0) {
       setNotSavedCount(failCount);
       setQueue([]);
@@ -422,7 +448,11 @@ const UploadPage: React.FC = () => {
               {draft.type === 'debt_payment' ? (
                 <div style={{ marginTop: 14 }}>
                   <FieldLabel>หนี้ที่จะจ่าย</FieldLabel>
-                  {debts.length === 0 ? (
+                  {debtsLoadFailed ? (
+                    <IonText color="warning">
+                      <p style={{ fontSize: 13 }}>โหลดรายการหนี้ไม่สำเร็จ — ลองปิดแล้วเปิดหน้านี้ใหม่</p>
+                    </IonText>
+                  ) : debts.length === 0 ? (
                     <p style={{ fontSize: 13, color: 'var(--tl-text-secondary)' }}>
                       ยังไม่มีรายการหนี้ในระบบ — เพิ่มหนี้ในแท็บ &quot;หนี้สิน&quot; ก่อน
                     </p>
@@ -579,6 +609,13 @@ const UploadPage: React.FC = () => {
                   ? `บันทึกแล้ว ${savedCount} รายการ${skippedDuplicateCount > 0 ? ` · ข้ามสลิปซ้ำ ${skippedDuplicateCount} รายการ` : ''}${notSavedCount > 0 ? ` · ไม่ได้บันทึก ${notSavedCount} รายการ` : ''}`
                   : 'บันทึกรายการแล้ว'}
               </p>
+              {saveErrorMessages.length > 0 && (
+                <IonText color="danger">
+                  <p style={{ fontSize: 12.5, marginTop: 6 }}>
+                    {saveErrorMessages.join(' · ')}
+                  </p>
+                </IonText>
+              )}
               <IonButton
                 expand="block"
                 className="ion-margin-top"

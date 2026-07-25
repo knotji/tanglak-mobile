@@ -97,22 +97,29 @@ const DebtSimulatePage: React.FC = () => {
 
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>('minimum');
   const [customAmount, setCustomAmount] = useState('');
+  const [snapshotLoadFailed, setSnapshotLoadFailed] = useState(false);
 
   useIonViewWillEnter(() => {
     setLoading(true);
     setNotFound(false);
     setError('');
-    void Promise.all([getDebtById(id), getOverviewSnapshot().catch(() => null)])
-      .then(([loadedDebt, snapshot]) => {
+    setSnapshotLoadFailed(false);
+    void Promise.all([getDebtById(id), Promise.allSettled([getOverviewSnapshot()])])
+      .then(([loadedDebt, [snapshotResult]]) => {
         if (!loadedDebt) {
           setNotFound(true);
           return;
         }
         setDebt(loadedDebt);
-        if (snapshot) {
+        if (snapshotResult.status === 'fulfilled') {
+          const snapshot = snapshotResult.value;
           setPlannedIncome(snapshot.plannedIncomeSatang > 0 ? String(snapshot.plannedIncomeSatang / 100) : '');
           setSpending(snapshot.totals.livingExpenseSatang > 0 ? String(snapshot.totals.livingExpenseSatang / 100) : '');
           setDebtPayments(snapshot.totals.debtPaymentSatang > 0 ? String(snapshot.totals.debtPaymentSatang / 100) : '');
+        } else {
+          // Pre-fill failed -- the fields below stay editable/blank rather
+          // than silently showing zeros that look like real financial data.
+          setSnapshotLoadFailed(true);
         }
         setSelectedPlan('minimum');
         setCustomAmount('');
@@ -239,6 +246,13 @@ const DebtSimulatePage: React.FC = () => {
 
               {showSettings && (
                 <div style={{ marginTop: 14 }}>
+                  {snapshotLoadFailed && (
+                    <IonText color="warning">
+                      <p style={{ fontSize: 12, marginTop: 0, marginBottom: 10 }}>
+                        โหลดข้อมูลรายรับ-รายจ่ายอัตโนมัติไม่สำเร็จ กรุณากรอกด้วยตนเอง
+                      </p>
+                    </IonText>
+                  )}
                   <FieldLabel>รายได้รวมเดือนนี้ (บาท)</FieldLabel>
                   <IonInput fill="outline" type="number" inputmode="decimal" value={plannedIncome} onIonInput={(e) => setPlannedIncome(e.detail.value ?? '')} />
 

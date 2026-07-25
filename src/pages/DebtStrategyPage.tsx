@@ -36,16 +36,21 @@ const DebtStrategyPage: React.FC = () => {
   const [error, setError] = useState('');
   const [extraBudget, setExtraBudget] = useState('0');
   const [strategy, setStrategy] = useState<DebtStrategy>('avalanche');
+  const [snapshotLoadFailed, setSnapshotLoadFailed] = useState(false);
 
   useIonViewWillEnter(() => {
     setLoading(true);
     setError('');
-    void Promise.all([listDebts(), getOverviewSnapshot().catch(() => null)])
-      .then(([loadedDebts, snapshot]) => {
+    setSnapshotLoadFailed(false);
+    void Promise.all([listDebts(), Promise.allSettled([getOverviewSnapshot()])])
+      .then(([loadedDebts, [snapshotResult]]) => {
         setDebts(loadedDebts);
-        if (snapshot) {
+        if (snapshotResult.status === 'fulfilled') {
+          const snapshot = snapshotResult.value;
           const available = snapshot.plannedIncomeSatang - snapshot.totals.livingExpenseSatang - snapshot.totals.debtPaymentSatang;
           setExtraBudget(available > 0 ? String(Math.round(available / 100)) : '0');
+        } else {
+          setSnapshotLoadFailed(true);
         }
       })
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'โหลดข้อมูลหนี้ไม่สำเร็จ'))
@@ -94,6 +99,13 @@ const DebtStrategyPage: React.FC = () => {
           <>
             <div className="tl-card">
               <FieldLabel>เงินที่จ่ายเพิ่มได้ต่อเดือน (บาท)</FieldLabel>
+              {snapshotLoadFailed && (
+                <IonText color="warning">
+                  <p style={{ fontSize: 12, margin: '0 0 6px' }}>
+                    โหลดข้อมูลรายรับ-รายจ่ายอัตโนมัติไม่สำเร็จ กรุณากรอกด้วยตนเอง
+                  </p>
+                </IonText>
+              )}
               <IonInput fill="outline" type="number" inputmode="decimal" value={extraBudget} onIonInput={(e) => setExtraBudget(e.detail.value ?? '')} />
               <p style={{ fontSize: 12, color: 'var(--tl-text-secondary)', margin: '6px 0 0' }}>
                 ทุกหนี้จ่ายขั้นต่ำตามปกติ ส่วนนี้คือเงินก้อนพิเศษที่จะทุ่มให้หนี้ตัวที่โฟกัสก่อนตามแต่ละกลยุทธ์

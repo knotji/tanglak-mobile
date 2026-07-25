@@ -34,6 +34,7 @@ const OverviewPage: React.FC = () => {
   const [totalExpenseSatang, setTotalExpenseSatang] = useState(0);
   const [cashFlowHistory, setCashFlowHistory] = useState<MonthlyCashFlowPoint[]>([]);
   const [error, setError] = useState('');
+  const [partialLoadWarning, setPartialLoadWarning] = useState('');
   const isPrivacy = usePrivacyMode();
 
   useIonViewWillEnter(() => {
@@ -41,11 +42,22 @@ const OverviewPage: React.FC = () => {
     void Promise.all([
       getOverviewSnapshot(),
       listTransactionsForMonth(currentMonth),
-      listDebts().catch(() => []),
+      Promise.allSettled([listDebts()]),
     ])
-      .then(([snap, txs, debtList]) => {
+      .then(([snap, txs, [debtsResult]]) => {
         setSnapshot(snap);
+        const debtList = debtsResult.status === 'fulfilled' ? debtsResult.value : [];
         setDebts(debtList);
+        // Debts failing to load doesn't invalidate the rest of the page (cash
+        // flow / category breakdown don't depend on it), but it does mean the
+        // financial-health score below is computed on a possibly-empty debt
+        // list rather than a genuinely debt-free one -- flag it rather than
+        // silently showing a healthier-looking score than reality.
+        setPartialLoadWarning(
+          debtsResult.status === 'rejected'
+            ? 'โหลดข้อมูลหนี้ไม่สำเร็จ — คะแนนสุขภาพการเงินด้านล่างอาจไม่ครบถ้วน'
+            : '',
+        );
 
         // Calculate Category Breakdown
         const categoryMap = new Map<string, number>();
@@ -116,6 +128,9 @@ const OverviewPage: React.FC = () => {
         )}
 
         {error && <IonText color="danger"><p>{error}</p></IonText>}
+        {!error && partialLoadWarning && (
+          <IonText color="warning"><p style={{ fontSize: 12.5 }}>{partialLoadWarning}</p></IonText>
+        )}
 
         {snapshot && (
           <>

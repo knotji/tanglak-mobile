@@ -75,25 +75,30 @@ export interface CheckDuplicateInput {
   occurredAt: string;
 }
 
+/**
+ * Throws on a real query failure (network/auth/RLS) instead of swallowing it --
+ * silently treating "the check itself failed" the same as "no duplicate found"
+ * would disable the app's only anti-double-save guard exactly when the network
+ * is unreliable, which is also when a user is most likely to retry-tap save.
+ * Callers that only want a best-effort hint (not a hard block) should catch
+ * this themselves and decide what "the check failed" should mean for them.
+ */
 export async function checkDuplicateTransaction(input: CheckDuplicateInput): Promise<Transaction | null> {
   if (!input.amountSatang || !input.occurredAt) return null;
-  try {
-    const time = new Date(input.occurredAt).getTime();
-    if (isNaN(time)) return null;
-    const startTime = new Date(time - 5 * 60 * 1000).toISOString();
-    const endTime = new Date(time + 5 * 60 * 1000).toISOString();
+  const time = new Date(input.occurredAt).getTime();
+  if (isNaN(time)) return null;
+  const startTime = new Date(time - 5 * 60 * 1000).toISOString();
+  const endTime = new Date(time + 5 * 60 * 1000).toISOString();
 
-    const { data } = await supabase
-      .from('transactions')
-      .select(COLUMNS)
-      .eq('amount_satang', input.amountSatang)
-      .gte('occurred_at', startTime)
-      .lte('occurred_at', endTime)
-      .limit(1)
-      .maybeSingle();
+  const { data, error } = await supabase
+    .from('transactions')
+    .select(COLUMNS)
+    .eq('amount_satang', input.amountSatang)
+    .gte('occurred_at', startTime)
+    .lte('occurred_at', endTime)
+    .limit(1)
+    .maybeSingle();
 
-    return data ? mapRow(data) : null;
-  } catch {
-    return null;
-  }
+  if (error) throw new Error('ตรวจสอบรายการซ้ำไม่สำเร็จ');
+  return data ? mapRow(data) : null;
 }

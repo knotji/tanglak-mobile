@@ -23,21 +23,32 @@ const TodayPage: React.FC = () => {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [snapshot, setSnapshot] = useState<OverviewSnapshot | null>(null);
   const [error, setError] = useState('');
+  // Separate from `error`: debts/snapshot failing shouldn't block the whole
+  // page (transactions may have loaded fine), but silently showing "no
+  // debts" when the load actually failed would misrepresent real debt data
+  // as if it didn't exist -- so surface it as a visible, non-blocking notice
+  // instead of swallowing it.
+  const [partialLoadWarning, setPartialLoadWarning] = useState('');
   const router = useIonRouter();
   const isPrivacy = usePrivacyMode();
 
   const load = async (event?: CustomEvent) => {
     try {
-      const [txs, debtList, snap] = await Promise.all([
-        listTodayTransactions(),
-        listDebts().catch(() => []),
-        getOverviewSnapshot().catch(() => null),
-      ]);
+      const txs = await listTodayTransactions();
       setTransactions(txs);
-      setDebts(debtList);
-      setSnapshot(snap);
       setError('');
-      if (isDebtReminderEnabled()) {
+
+      const [debtsResult, snapResult] = await Promise.allSettled([listDebts(), getOverviewSnapshot()]);
+      const debtList = debtsResult.status === 'fulfilled' ? debtsResult.value : [];
+      setDebts(debtList);
+      setSnapshot(snapResult.status === 'fulfilled' ? snapResult.value : null);
+      setPartialLoadWarning(
+        debtsResult.status === 'rejected' || snapResult.status === 'rejected'
+          ? 'โหลดข้อมูลหนี้/สรุปยอดไม่สำเร็จบางส่วน ตัวเลขด้านล่างอาจไม่ครบถ้วน — ลองรีเฟรชอีกครั้ง'
+          : '',
+      );
+
+      if (isDebtReminderEnabled() && debtsResult.status === 'fulfilled') {
         void scheduleDebtReminders(debtList);
       }
     } catch (cause) {
@@ -76,6 +87,9 @@ const TodayPage: React.FC = () => {
         )}
 
         {error && <IonText color="danger"><p>{error}</p></IonText>}
+        {!error && partialLoadWarning && (
+          <IonText color="warning"><p style={{ fontSize: 12.5 }}>{partialLoadWarning}</p></IonText>
+        )}
 
         {transactions && (
           <>
