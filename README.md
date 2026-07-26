@@ -122,7 +122,6 @@ Firebase App ID: `1:276482893444:android:f506254af133e7cea584d1`.
 ## Known gaps / caveats (check before assuming something works)
 
 - **No iOS build.** Android only.
-- **Google OAuth requires manual Supabase Auth dashboard config** (`tanglak://login-callback` redirect URL) — the client code is correct but untested until that's set up.
 - **`extract-document`'s type-classification is prompt-driven, not code-driven.** If a scanned slip lands on the wrong transaction type, check the prompt's reasoning rules first before assuming a client bug.
 - **Auto-save (opt-in toggle on Upload) skips the human review step entirely** — a scanned slip's type/amount/category go straight from the AI extraction to the database with no human check. Structural validity (has an amount, has a date) is still enforced; correctness of what the AI guessed is not.
 - **No unit tests for anything that calls Supabase** — only pure-logic modules are tested. A regression in a `lib/*.ts` function that talks to the DB won't be caught by `npm run test.unit`.
