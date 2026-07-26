@@ -5,10 +5,11 @@ Ionic React + Capacitor personal-finance app for the Thai market: slip OCR expen
 ## Stack
 
 - **Framework**: Ionic React 8 + Vite + TypeScript, React Router v5 (`IonReactRouter`)
+- **State**: No global data store — page data is fetched per-view via `useIonViewData` (see below), no client-side cache. Zustand is used only for the two small pieces of state that genuinely need cross-component sync (`privacyStore.ts`, `notificationPrefs.ts`), both localStorage-backed.
 - **Backend**: Supabase (`@supabase/supabase-js`, client-side, RLS-scoped anon key — no service-role key anywhere in this repo)
 - **AI**: Google Gemini Vision, called only from Supabase Edge Functions (never directly from the client)
 - **Native**: Capacitor 8 — `@capacitor/app`, `@capacitor/browser`, `@capacitor/haptics`, `@capacitor/keyboard`, `@capacitor/local-notifications`, `@capacitor/status-bar`, `@aparajita/capacitor-biometric-auth`
-- **Tests**: Vitest, pure-logic unit tests only (no Supabase mocking yet) — 141 tests across `src/lib/*.test.ts`
+- **Tests**: Vitest, pure-logic unit tests only (no Supabase mocking yet) — 147 tests across `src/lib/*.test.ts`
 - **Android only** for now; iOS not started
 
 ## Setup
@@ -85,7 +86,8 @@ All financial writes go through these — the client never writes to `transactio
 - `dailySpendLimit.ts` — `(plannedIncome − debtMinimums − monthSpentBeforeToday) / daysRemainingInMonth`, sourced from `getOverviewSnapshot()`, no fabricated defaults.
 - `biometrics.ts` — wraps `@aparajita/capacitor-biometric-auth`; real native OS prompt with device PIN/pattern fallback, fails open only if the device has neither biometry nor any lock at all.
 - `notifications.ts` + `notificationPrefs.ts` — local push reminders 3 days and 1 day before a debt's due date; the toggle in Settings persists to localStorage and is actually respected (doesn't just reset on next load).
-- `privacyStore.ts` — app-wide "mask all amounts" toggle + auto-blur on app-switcher/background.
+- `privacyStore.ts` — app-wide "mask all amounts" toggle (Zustand store, localStorage-backed) + auto-blur on app-switcher/background.
+- `useIonViewData.ts` — shared load/error/spinner hook used by most read-only pages; not used by pages with multi-step or multi-source loading shapes (see the hook's own doc comment).
 - `financialHealthScore.ts` — 0–100 score / A+–D grade from DTI ratio, surplus rate, active debt risk.
 - `merchantRules.ts` — learns merchant→category associations on save/edit, pre-seeded with common Thai merchants.
 - `documentUpload.ts` — image resize/compress + Edge Function invocation; also handles NCB credit-bureau PDF / e-statement import for debts.
