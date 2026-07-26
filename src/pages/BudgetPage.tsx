@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonToolbar, useIonViewWillEnter } from '@ionic/react';
+import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonToolbar } from '@ionic/react';
 import { pencilOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import { getBudgetSummaryForCurrentMonth, type BudgetSummary, type CategorySummary } from '@/lib/budget';
 import { formatTHB } from '@/lib/money';
+import { useIonViewData } from '@/lib/useIonViewData';
 
 const STATUS_COLOR: Record<CategorySummary['status'], string> = {
   healthy: 'var(--tl-income)',
@@ -42,14 +42,7 @@ const CategoryRow: React.FC<{ category: CategorySummary }> = ({ category }) => (
 
 const BudgetPage: React.FC = () => {
   const history = useHistory();
-  const [summary, setSummary] = useState<BudgetSummary | null>(null);
-  const [error, setError] = useState('');
-
-  useIonViewWillEnter(() => {
-    void getBudgetSummaryForCurrentMonth()
-      .then(setSummary)
-      .catch((cause) => setError(cause instanceof Error ? cause.message : 'โหลดงบประมาณไม่สำเร็จ'));
-  });
+  const { data: summary, error } = useIonViewData<BudgetSummary>(getBudgetSummaryForCurrentMonth, 'โหลดงบประมาณไม่สำเร็จ');
 
   return (
     <IonPage>

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   IonBackButton,
   IonButtons,
@@ -9,21 +8,14 @@ import {
   IonSpinner,
   IonText,
   IonToolbar,
-  useIonViewWillEnter,
 } from '@ionic/react';
 import { cardOutline, walletOutline } from 'ionicons/icons';
 import PageHeader from '@/components/PageHeader';
 import { listAccounts, ACCOUNT_TYPE_LABELS, maskLastFour, type Account } from '@/lib/accounts';
+import { useIonViewData } from '@/lib/useIonViewData';
 
 const AccountsPage: React.FC = () => {
-  const [accounts, setAccounts] = useState<Account[] | null>(null);
-  const [error, setError] = useState('');
-
-  useIonViewWillEnter(() => {
-    void listAccounts()
-      .then(setAccounts)
-      .catch((cause) => setError(cause instanceof Error ? cause.message : 'โหลดรายการบัญชีไม่สำเร็จ'));
-  });
+  const { data: accounts, error } = useIonViewData<Account[]>(listAccounts, 'โหลดรายการบัญชีไม่สำเร็จ');
 
   return (
     <IonPage>

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { IonButton, IonContent, IonDatetime, IonIcon, IonModal, IonPage, IonRefresher, IonRefresherContent, IonSpinner, IonText, useIonViewWillEnter } from '@ionic/react';
+import { IonButton, IonContent, IonDatetime, IonIcon, IonModal, IonPage, IonRefresher, IonRefresherContent, IonSpinner, IonText } from '@ionic/react';
 import { chevronBackOutline, chevronForwardOutline } from 'ionicons/icons';
 import PageHeader from '@/components/PageHeader';
 import TransactionList from '@/components/TransactionList';
 import { listTransactionsForMonth, type Transaction } from '@/lib/transactions';
 import { currentBangkokMonth, shiftBangkokMonth } from '@/lib/bangkokDate';
 import { formatThaiMonthYearLabel } from '@/lib/date';
+import { useIonViewData } from '@/lib/useIonViewData';
 
 const MonthPicker: React.FC<{ month: string; onChange: (month: string) => void }> = ({ month, onChange }) => {
   const [open, setOpen] = useState(false);
@@ -58,43 +59,29 @@ const MonthPicker: React.FC<{ month: string; onChange: (month: string) => void }
 
 const TransactionsPage: React.FC = () => {
   const [month, setMonth] = useState(() => currentBangkokMonth());
-  const [transactions, setTransactions] = useState<Transaction[] | null>(null);
-  const [error, setError] = useState('');
-
-  const load = async (targetMonth: string, event?: CustomEvent) => {
-    try {
-      setTransactions(await listTransactionsForMonth(targetMonth));
-      setError('');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'โหลดรายการไม่สำเร็จ');
-    } finally {
-      (event?.target as HTMLIonRefresherElement | undefined)?.complete();
-    }
-  };
-
-  useIonViewWillEnter(() => {
-    // Deliberately does NOT clear transactions first: useIonViewWillEnter
-    // fires on every tab revisit, not just when `month` actually changes, so
-    // nulling here would flash a full-page spinner over data that's very
-    // likely still correct every time the user taps away and back. Old data
-    // stays visible while this refetch runs in the background; explicit
-    // month changes (handleMonthChange below) still clear it since that's a
-    // genuine "we don't have this data yet" transition.
-    void load(month);
-  }, [month]);
+  // Deliberately does NOT clear transactions first on every tab revisit --
+  // useIonViewData's reload(false) (the default, fired by its own internal
+  // useIonViewWillEnter) leaves old data visible while a background refetch
+  // runs, so revisiting this tab doesn't flash a spinner over data that's
+  // still correct. Explicit month changes (handleMonthChange below) call
+  // reload(true) instead, which does clear first -- that's a genuine
+  // "we don't have this data yet" transition, unlike a tab revisit.
+  const { data: transactions, error, reload, setData: setTransactions } = useIonViewData<Transaction[]>(
+    () => listTransactionsForMonth(month),
+    'โหลดรายการไม่สำเร็จ',
+    [month],
+  );
 
   const isCurrentMonth = month === currentBangkokMonth();
 
   const handleMonthChange = (nextMonth: string) => {
     setMonth(nextMonth);
-    setTransactions(null);
-    void load(nextMonth);
   };
 
   return (
     <IonPage>
       <IonContent className="ion-padding" fullscreen>
-        <IonRefresher slot="fixed" onIonRefresh={(e) => void load(month, e)}>
+        <IonRefresher slot="fixed" onIonRefresh={(e) => void reload(false, e)}>
           <IonRefresherContent />
         </IonRefresher>
 

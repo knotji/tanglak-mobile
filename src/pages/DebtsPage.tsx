@@ -9,7 +9,6 @@ import {
   IonRefresherContent,
   IonSpinner,
   IonText,
-  useIonViewWillEnter,
 } from '@ionic/react';
 import { addOutline, chevronForwardOutline, documentTextOutline, trendingUpOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
@@ -18,32 +17,17 @@ import DebtCard from '@/components/DebtCard';
 import DebtImportModal from '@/components/DebtImportModal';
 import { listDebts, type Debt } from '@/lib/debts';
 import { filterActiveDebts } from '@/lib/debtPortfolioStrategy';
+import { useIonViewData } from '@/lib/useIonViewData';
 
 const DebtsPage: React.FC = () => {
   const history = useHistory();
-  const [debts, setDebts] = useState<Debt[] | null>(null);
-  const [error, setError] = useState('');
+  const { data: debts, error, reload } = useIonViewData<Debt[]>(listDebts, 'โหลดรายการหนี้ไม่สำเร็จ');
   const [importModalOpen, setImportModalOpen] = useState(false);
-
-  const load = async (event?: CustomEvent) => {
-    try {
-      setDebts(await listDebts());
-      setError('');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'โหลดรายการหนี้ไม่สำเร็จ');
-    } finally {
-      (event?.target as HTMLIonRefresherElement | undefined)?.complete();
-    }
-  };
-
-  useIonViewWillEnter(() => {
-    void load();
-  });
 
   return (
     <IonPage>
       <IonContent className="ion-padding" fullscreen>
-        <IonRefresher slot="fixed" onIonRefresh={(e) => void load(e)}>
+        <IonRefresher slot="fixed" onIonRefresh={(e) => void reload(false, e)}>
           <IonRefresherContent />
         </IonRefresher>
 
@@ -134,7 +118,7 @@ const DebtsPage: React.FC = () => {
         <DebtImportModal
           isOpen={importModalOpen}
           onClose={() => setImportModalOpen(false)}
-          onDebtImported={() => void load()}
+          onDebtImported={() => void reload()}
         />
       </IonContent>
     </IonPage>
