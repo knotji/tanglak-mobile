@@ -52,7 +52,9 @@ export async function scheduleDebtReminders(debts: Debt[]): Promise<number> {
     let idCounter = 1000;
 
     for (const debt of debts) {
-      if (!debt.dueDate || debt.status === 'paid') continue;
+      // listDebts() already excludes paid_off/deleted debts, so no status
+      // check is needed here -- only a due date is required to schedule.
+      if (!debt.dueDate) continue;
 
       const due = new Date(`${debt.dueDate}T00:00:00+07:00`);
       const minSatang = debt.minimumPaymentSatang ?? debt.amountDueSatang ?? 0;

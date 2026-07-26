@@ -1,18 +1,11 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Redirect, Route } from 'react-router-dom';
-import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
+import { IonApp, IonRouterOutlet, IonSpinner, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
+import { App as CapApp } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { supabase } from '@/lib/supabaseClient';
-import OverviewPage from '@/pages/OverviewPage';
-import BudgetPage from '@/pages/BudgetPage';
-import SettingsPage from '@/pages/SettingsPage';
-import AccountsPage from '@/pages/AccountsPage';
-import EditTransactionPage from '@/pages/EditTransactionPage';
-import DebtFormPage from '@/pages/DebtFormPage';
-import DebtSimulatePage from '@/pages/DebtSimulatePage';
-import DebtStrategyPage from '@/pages/DebtStrategyPage';
-import BudgetEditPage from '@/pages/BudgetEditPage';
 import BiometricLockGuard from '@/components/BiometricLockGuard';
 import AppSplashScreen from '@/components/AppSplashScreen';
 import PrivacyBlurOverlay from '@/components/PrivacyBlurOverlay';
@@ -31,22 +24,34 @@ import './theme/variables.css';
 
 setupIonicReact();
 
-// Only Login/MainTabs are code-split: they're each behind their own gate
-// (checkingSession / the login redirect) so a first-load spinner there
-// reads as normal app boot. The pages below are pushed on top of an
-// already-visible, already-interactive tab bar -- lazy-loading those was
-// splitting off a couple KB each while sharing one Suspense boundary with
-// everything else in the outlet. Suspending on any one of them unmounted
-// the WHOLE outlet (including the already-mounted MainTabs/tab bar) until
-// its chunk fetched, then remounted everything -- the visible "bounce"
-// when opening a More-menu item for the first time in a session. Static
-// imports here removes the possibility of that boundary ever firing for
-// these routes.
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const MainTabs = lazy(() => import('@/components/MainTabs'));
 
-import { App as CapApp } from '@capacitor/app';
-import { Browser } from '@capacitor/browser';
+// Pages pushed on top of an already-visible, already-interactive tab bar.
+// These used to be static imports (bundled into the main chunk that has to
+// parse before the app can even show the login screen) specifically to
+// avoid a bounce bug: an earlier attempt at lazy-loading them shared ONE
+// Suspense boundary with MainTabs, so suspending on any one of these pages
+// unmounted the WHOLE outlet (including the already-mounted tab bar) until
+// its chunk fetched, then remounted everything -- a visible flash/bounce
+// every time a More-menu item was opened for the first time in a session.
+// Fix here is per-route Suspense (see PageFallback below) instead of one
+// shared boundary -- each of these can suspend independently without ever
+// touching MainTabs's own subtree.
+const OverviewPage = lazy(() => import('@/pages/OverviewPage'));
+const BudgetPage = lazy(() => import('@/pages/BudgetPage'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const AccountsPage = lazy(() => import('@/pages/AccountsPage'));
+const EditTransactionPage = lazy(() => import('@/pages/EditTransactionPage'));
+const DebtFormPage = lazy(() => import('@/pages/DebtFormPage'));
+const DebtSimulatePage = lazy(() => import('@/pages/DebtSimulatePage'));
+const DebtStrategyPage = lazy(() => import('@/pages/DebtStrategyPage'));
+const BudgetEditPage = lazy(() => import('@/pages/BudgetEditPage'));
+
+/** Scoped to a single route's content area, not the full screen -- suspending here must never affect the already-mounted tab bar in a sibling route. */
+const PageFallback: React.FC = () => (
+  <div className="ion-text-center ion-margin-top"><IonSpinner /></div>
+);
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -115,34 +120,34 @@ const App: React.FC = () => {
                   {session ? <MainTabs /> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/overview">
-                  {session ? <OverviewPage /> : <Redirect to="/login" />}
+                  {session ? <Suspense fallback={<PageFallback />}><OverviewPage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/budget">
-                  {session ? <BudgetPage /> : <Redirect to="/login" />}
+                  {session ? <Suspense fallback={<PageFallback />}><BudgetPage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/settings">
-                  {session ? <SettingsPage /> : <Redirect to="/login" />}
+                  {session ? <Suspense fallback={<PageFallback />}><SettingsPage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/accounts">
-                  {session ? <AccountsPage /> : <Redirect to="/login" />}
+                  {session ? <Suspense fallback={<PageFallback />}><AccountsPage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/transactions/:id/edit">
-                  {session ? <EditTransactionPage /> : <Redirect to="/login" />}
+                  {session ? <Suspense fallback={<PageFallback />}><EditTransactionPage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/debts/new">
-                  {session ? <DebtFormPage /> : <Redirect to="/login" />}
+                  {session ? <Suspense fallback={<PageFallback />}><DebtFormPage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/debts/:id/edit">
-                  {session ? <DebtFormPage /> : <Redirect to="/login" />}
+                  {session ? <Suspense fallback={<PageFallback />}><DebtFormPage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/debts/:id/simulate">
-                  {session ? <DebtSimulatePage /> : <Redirect to="/login" />}
+                  {session ? <Suspense fallback={<PageFallback />}><DebtSimulatePage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/debts/strategy">
-                  {session ? <DebtStrategyPage /> : <Redirect to="/login" />}
+                  {session ? <Suspense fallback={<PageFallback />}><DebtStrategyPage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/budget/edit">
-                  {session ? <BudgetEditPage /> : <Redirect to="/login" />}
+                  {session ? <Suspense fallback={<PageFallback />}><BudgetEditPage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/">
                   <Redirect to={session ? '/tabs/today' : '/login'} />

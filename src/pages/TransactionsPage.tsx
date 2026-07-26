@@ -73,7 +73,13 @@ const TransactionsPage: React.FC = () => {
   };
 
   useIonViewWillEnter(() => {
-    setTransactions(null);
+    // Deliberately does NOT clear transactions first: useIonViewWillEnter
+    // fires on every tab revisit, not just when `month` actually changes, so
+    // nulling here would flash a full-page spinner over data that's very
+    // likely still correct every time the user taps away and back. Old data
+    // stays visible while this refetch runs in the background; explicit
+    // month changes (handleMonthChange below) still clear it since that's a
+    // genuine "we don't have this data yet" transition.
     void load(month);
   }, [month]);
 

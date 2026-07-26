@@ -103,6 +103,7 @@ const UploadPage: React.FC = () => {
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
   const [extractProgress, setExtractProgress] = useState({ done: 0, total: 0 });
+  const [saveProgress, setSaveProgress] = useState({ done: 0, total: 0 });
   const [savedCount, setSavedCount] = useState(0);
   const [notSavedCount, setNotSavedCount] = useState(0);
   const [skippedDuplicateCount, setSkippedDuplicateCount] = useState(0);
@@ -170,8 +171,16 @@ const UploadPage: React.FC = () => {
 
   type SaveEntryResult = { kind: 'saved' | 'duplicate' | 'incomplete' } | { kind: 'error'; message: string };
 
-  const saveEntry = async (entry: QueueEntry): Promise<SaveEntryResult> => {
-    const entryDraft = entry.draft;
+  /**
+   * Shared by both the batch-save loop (saveEntry below) and the single-item
+   * interactive review screen (handleSave below) -- previously each hand-rolled
+   * its own copy of this validate/dedupe/save logic, and only the batch path
+   * called learnMerchantCategoryRule afterward. That meant merchant-category
+   * learning silently only happened for batch uploads, never for a manually
+   * entered or single-photo transaction saved through the review form -- an
+   * accidental behavioral difference between two paths a user can't tell apart.
+   */
+  const saveDraftEntry = async (entryDraft: DraftForm): Promise<SaveEntryResult> => {
     const amountNumber = Number(entryDraft.amount);
     if (!entryDraft.amount || !Number.isFinite(amountNumber) || amountNumber <= 0) return { kind: 'incomplete' };
     const occurredAt = datetimeLocalToIso(entryDraft.datetimeLocal);
@@ -183,7 +192,6 @@ const UploadPage: React.FC = () => {
       const existing = await checkDuplicateTransaction({ amountSatang, occurredAt });
       if (existing) {
         setSkippedDuplicateCount((c) => c + 1);
-        if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
         return { kind: 'duplicate' };
       }
     } catch (cause) {
@@ -210,11 +218,18 @@ const UploadPage: React.FC = () => {
           learnMerchantCategoryRule(entryDraft.merchant, entryDraft.categoryId);
         }
       }
-      if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
       return { kind: 'saved' };
     } catch (cause) {
       return { kind: 'error', message: cause instanceof Error ? cause.message : 'บันทึกรายการไม่สำเร็จ' };
     }
+  };
+
+  const saveEntry = async (entry: QueueEntry): Promise<SaveEntryResult> => {
+    const result = await saveDraftEntry(entry.draft);
+    if ((result.kind === 'saved' || result.kind === 'duplicate') && entry.previewUrl) {
+      URL.revokeObjectURL(entry.previewUrl);
+    }
+    return result;
   };
 
   const handleFiles = async (files: File[]) => {
@@ -245,12 +260,13 @@ const UploadPage: React.FC = () => {
     }
 
     setStep('saving');
+    setSaveProgress({ done: 0, total: entries.length });
     let saved = 0;
     const incompleteEntries: QueueEntry[] = [];
     const errorMessages: string[] = [];
 
-    for (const entry of entries) {
-      const res = await saveEntry(entry);
+    for (let i = 0; i < entries.length; i++) {
+      const res = await saveEntry(entries[i]);
       if (res.kind === 'saved') {
         saved += 1;
       } else if (res.kind === 'duplicate') {
@@ -259,8 +275,9 @@ const UploadPage: React.FC = () => {
         failCount += 1;
         if (!errorMessages.includes(res.message)) errorMessages.push(res.message);
       } else {
-        incompleteEntries.push(entry);
+        incompleteEntries.push(entries[i]);
       }
+      setSaveProgress({ done: i + 1, total: entries.length });
     }
 
     setSavedCount(saved);
@@ -300,24 +317,21 @@ const UploadPage: React.FC = () => {
     }
     setError('');
     setStep('saving');
-    try {
-      if (draft.type === 'debt_payment') {
-        await addDebtPayment({ debtId: draft.debtId, amount: amountNumber, occurredAt });
-      } else {
-        const category = CATEGORY_OPTIONS.find((option) => option.id === draft.categoryId);
-        const input: SaveTransactionInput = {
-          type: draft.type,
-          amount: amountNumber,
-          occurredAt,
-          merchant: draft.merchant || undefined,
-          categoryLabel: category?.label,
-        };
-        await saveTransaction(input);
-      }
+    const result = await saveDraftEntry(draft);
+    if (result.kind === 'saved') {
       setSavedCount((count) => count + 1);
       advanceQueue();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'บันทึกรายการไม่สำเร็จ');
+    } else if (result.kind === 'duplicate') {
+      // Pre-validation above already confirmed amount/date/debtId are
+      // present, so the only way saveDraftEntry itself declines is a real
+      // duplicate or error -- surface the duplicate as an inline warning
+      // rather than silently refusing to let the user override it.
+      setDraft({ ...draft, isDuplicate: true });
+      setStep('review');
+    } else {
+      // 'incomplete' can't actually happen here (validated above), but
+      // TypeScript doesn't know that -- treat it the same as 'error'.
+      setError(result.kind === 'error' ? result.message : 'บันทึกรายการไม่สำเร็จ');
       setStep('review');
     }
   };
@@ -396,7 +410,10 @@ const UploadPage: React.FC = () => {
         {step === 'saving' && !draft && (
           <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
             <IonSpinner />
-            <p style={{ marginTop: 8, color: 'var(--tl-text-secondary)' }}>กำลังบันทึกรายการ…</p>
+            <p style={{ marginTop: 8, color: 'var(--tl-text-secondary)' }}>
+              กำลังบันทึกรายการ…
+              {saveProgress.total > 1 && ` (${Math.min(saveProgress.done + 1, saveProgress.total)}/${saveProgress.total})`}
+            </p>
           </div>
         )}
 

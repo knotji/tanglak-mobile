@@ -35,6 +35,7 @@ interface DraftForm {
   merchant: string;
   datetimeLocal: string;
   categoryId: string;
+  note: string;
 }
 
 function datetimeLocalToIso(value: string): string {
@@ -73,6 +74,7 @@ const EditTransactionPage: React.FC = () => {
           merchant: transaction.merchant ?? '',
           datetimeLocal: isoInstantToBangkokDatetimeLocal(transaction.occurredAt),
           categoryId: CATEGORY_OPTIONS.find((option) => option.label === transaction.categoryLabel)?.id ?? '',
+          note: transaction.note ?? '',
         });
       })
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'โหลดรายการไม่สำเร็จ'));
@@ -105,6 +107,7 @@ const EditTransactionPage: React.FC = () => {
         occurredAt,
         merchant: draft.merchant || undefined,
         categoryLabel: category?.label,
+        note: draft.note || undefined,
       };
       await saveTransaction(input);
       history.goBack();
@@ -300,12 +303,8 @@ const EditTransactionPage: React.FC = () => {
                 <div style={{ paddingLeft: 44 }}>
                   <IonInput
                     placeholder="เช่น #เที่ยวญี่ปุ่น, #จัดเลี้ยง"
-                    value={draft.merchant.includes('#') ? draft.merchant.slice(draft.merchant.indexOf('#')) : ''}
-                    onIonInput={(e) => {
-                      const val = e.detail.value ?? '';
-                      const baseMerchant = draft.merchant.includes('#') ? draft.merchant.slice(0, draft.merchant.indexOf('#')).trim() : draft.merchant;
-                      setDraft({ ...draft, merchant: val ? `${baseMerchant} ${val}`.trim() : baseMerchant });
-                    }}
+                    value={draft.note}
+                    onIonInput={(e) => setDraft({ ...draft, note: e.detail.value ?? '' })}
                     style={{
                       '--background': 'transparent',
                       '--padding-start': '0',

@@ -3,7 +3,7 @@ import { dayNetSatang, groupTransactionsByBangkokDay } from './groupByDay';
 import type { Transaction } from './transactions';
 
 function makeTransaction(overrides: Partial<Transaction> & Pick<Transaction, 'id' | 'type' | 'amountSatang' | 'occurredAt'>): Transaction {
-  return { merchant: null, categoryLabel: null, paymentMethod: null, ...overrides };
+  return { merchant: null, categoryLabel: null, paymentMethod: null, note: null, ...overrides };
 }
 
 describe('groupTransactionsByBangkokDay', () => {

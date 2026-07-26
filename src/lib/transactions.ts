@@ -11,11 +11,12 @@ export interface Transaction {
   merchant: string | null;
   categoryLabel: string | null;
   paymentMethod: string | null;
+  note: string | null;
 }
 
 // Matches tanglak's TRANSACTION_COLUMNS selection, trimmed to what the
 // mobile list/today views render.
-const COLUMNS = 'id, type, amount_satang, occurred_at, merchant, category_label, payment_method';
+const COLUMNS = 'id, type, amount_satang, occurred_at, merchant, category_label, payment_method, note';
 
 interface TransactionRow {
   id: string;
@@ -25,6 +26,7 @@ interface TransactionRow {
   merchant: string | null;
   category_label: string | null;
   payment_method: string | null;
+  note: string | null;
 }
 
 function mapRow(row: TransactionRow): Transaction {
@@ -36,6 +38,7 @@ function mapRow(row: TransactionRow): Transaction {
     merchant: row.merchant,
     categoryLabel: row.category_label,
     paymentMethod: row.payment_method,
+    note: row.note,
   };
 }
 

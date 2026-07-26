@@ -39,13 +39,22 @@ const OverviewPage: React.FC = () => {
 
   useIonViewWillEnter(() => {
     const currentMonth = currentBangkokMonth();
+    // The 3 prior months for the trend chart -- currentMonth itself is
+    // fetched once below and reused for both the category breakdown and the
+    // trend chart's last bar, instead of querying it a second time.
+    const priorMonths = [shiftBangkokMonth(currentMonth, -3), shiftBangkokMonth(currentMonth, -2), shiftBangkokMonth(currentMonth, -1)];
+
     void Promise.all([
-      getOverviewSnapshot(),
       listTransactionsForMonth(currentMonth),
+      Promise.all(priorMonths.map((m) => listTransactionsForMonth(m))),
       Promise.allSettled([listDebts()]),
     ])
-      .then(([snap, txs, [debtsResult]]) => {
+      .then(async ([currentMonthTxs, priorMonthsTxs, [debtsResult]]) => {
+        // Reuses currentMonthTxs instead of getOverviewSnapshot() querying
+        // this same month's transactions a second time.
+        const snap = await getOverviewSnapshot(currentMonthTxs);
         setSnapshot(snap);
+
         const debtList = debtsResult.status === 'fulfilled' ? debtsResult.value : [];
         setDebts(debtList);
         // Debts failing to load doesn't invalidate the rest of the page (cash
@@ -62,7 +71,7 @@ const OverviewPage: React.FC = () => {
         // Calculate Category Breakdown
         const categoryMap = new Map<string, number>();
         let sumExpenseSatang = 0;
-        for (const tx of txs) {
+        for (const tx of currentMonthTxs) {
           if (tx.type === 'expense' || tx.type === 'debt_payment') {
             const cat = tx.categoryLabel || 'อื่นๆ';
             categoryMap.set(cat, (categoryMap.get(cat) ?? 0) + tx.amountSatang);
@@ -81,26 +90,20 @@ const OverviewPage: React.FC = () => {
         setDonutItems(items);
         setTotalExpenseSatang(sumExpenseSatang);
 
-        // Build 4-month historical trend
-        const months = [
-          shiftBangkokMonth(currentMonth, -3),
-          shiftBangkokMonth(currentMonth, -2),
-          shiftBangkokMonth(currentMonth, -1),
-          currentMonth,
-        ];
-
-        void Promise.all(months.map((m) => listTransactionsForMonth(m))).then((results) => {
-          const trend: MonthlyCashFlowPoint[] = results.map((mList, i) => {
-            let inc = 0;
-            let exp = 0;
-            for (const t of mList) {
-              if (t.type === 'income' || t.type === 'refund') inc += t.amountSatang;
-              if (t.type === 'expense' || t.type === 'debt_payment') exp += t.amountSatang;
-            }
-            return { monthLabel: `${months[i].split('-')[1]}`, incomeSatang: inc, expenseSatang: exp };
-          });
-          setCashFlowHistory(trend);
+        // Build the 4-month historical trend from the 3 prior months already
+        // fetched above plus the current month's transactions already in hand.
+        const months = [...priorMonths, currentMonth];
+        const monthTxLists = [...priorMonthsTxs, currentMonthTxs];
+        const trend: MonthlyCashFlowPoint[] = monthTxLists.map((mList, i) => {
+          let inc = 0;
+          let exp = 0;
+          for (const t of mList) {
+            if (t.type === 'income' || t.type === 'refund') inc += t.amountSatang;
+            if (t.type === 'expense' || t.type === 'debt_payment') exp += t.amountSatang;
+          }
+          return { monthLabel: `${months[i].split('-')[1]}`, incomeSatang: inc, expenseSatang: exp };
         });
+        setCashFlowHistory(trend);
       })
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'โหลดภาพรวมไม่สำเร็จ'));
   });
