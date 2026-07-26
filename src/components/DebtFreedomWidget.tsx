@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { IonIcon } from '@ionic/react';
 import { trophyOutline, sparklesOutline, trendingDownOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
@@ -16,8 +16,18 @@ export const DebtFreedomWidget: React.FC<DebtFreedomWidgetProps> = ({ debts }) =
   const history = useHistory();
   const [selectedExtraSatang, setSelectedExtraSatang] = useState(0);
 
-  const activeDebts = filterActiveDebts(debts);
-  if (activeDebts.length === 0) {
+  const activeDebts = useMemo(() => filterActiveDebts(debts), [debts]);
+  // Both run a full N-debt amortization simulation -- memoized so an
+  // unrelated parent re-render (e.g. toggling privacy mode) doesn't
+  // recompute them; only a real change to the debt list or the selected
+  // extra-budget chip does.
+  const baseComparison = useMemo(() => (activeDebts.length > 0 ? buildDebtPortfolioComparison(activeDebts, 0) : null), [activeDebts]);
+  const extraComparison = useMemo(
+    () => (activeDebts.length > 0 ? buildDebtPortfolioComparison(activeDebts, selectedExtraSatang) : null),
+    [activeDebts, selectedExtraSatang],
+  );
+
+  if (activeDebts.length === 0 || !baseComparison || !extraComparison) {
     return (
       <div
         className="tl-card"
@@ -57,7 +67,6 @@ export const DebtFreedomWidget: React.FC<DebtFreedomWidgetProps> = ({ debts }) =
   }
 
   // Base simulation without extra budget
-  const baseComparison = buildDebtPortfolioComparison(activeDebts, 0);
   const baseStrategy = baseComparison.avalanche;
 
   // Maximum remaining months among all active debts
@@ -73,7 +82,6 @@ export const DebtFreedomWidget: React.FC<DebtFreedomWidgetProps> = ({ debts }) =
   }
 
   // Accelerated simulation with selected extra budget
-  const extraComparison = buildDebtPortfolioComparison(activeDebts, selectedExtraSatang);
   const extraStrategy = extraComparison.avalanche;
   let maxExtraMonths = 0;
   let latestExtraPayoffDate = latestBasePayoffDate;

@@ -1,7 +1,6 @@
 /// <reference types="vitest" />
 
 import path from 'node:path'
-import legacy from '@vitejs/plugin-legacy'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
@@ -9,7 +8,6 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [
     react(),
-    legacy()
   ],
   server: {
     port: 5190,
@@ -37,8 +35,12 @@ export default defineConfig({
         // inherently large and already loads eagerly, since setupIonicReact()
         // has to run before any route), but repeat-visit load time does.
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ionic: ['@ionic/react', '@ionic/react-router'],
+          vendor: ['react', 'react-dom'],
+          // react-router-dom lives here, not in vendor, since
+          // @ionic/react-router depends on it -- splitting them apart
+          // produced a vendor<->ionic circular-chunk warning on every build
+          // (Rollup couldn't cleanly order which chunk imports from which).
+          ionic: ['@ionic/react', '@ionic/react-router', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
         },
       },

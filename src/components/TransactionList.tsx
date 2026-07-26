@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { IonActionSheet, IonAlert, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import TransactionRow from '@/components/TransactionRow';
@@ -45,7 +45,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
   };
 
   const todayDateKey = nowBangkokDatetimeLocal().slice(0, 10);
-  const groups = groupTransactionsByBangkokDay(transactions);
+  const groups = useMemo(() => groupTransactionsByBangkokDay(transactions), [transactions]);
 
   return (
     <>
