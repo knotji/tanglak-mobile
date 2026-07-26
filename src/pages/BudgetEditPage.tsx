@@ -30,14 +30,38 @@ import {
 } from '@/lib/budget';
 import { listTransactionsForMonth } from '@/lib/transactions';
 import { currentBangkokMonth, shiftBangkokMonth } from '@/lib/bangkokDate';
-import { suggestBudgetFromHistory, type BudgetSuggestion } from '@/lib/budgetSuggestion';
-import { CATEGORY_OPTIONS } from '@/lib/categories';
-import { formatTHB } from '@/lib/money';
+import { getOverviewSnapshot } from '@/lib/overview';
+import { suggestBudgetFromHistory, suggestBudgetFromIncomeRatio, type BudgetSuggestion, type IncomeRatioSuggestion } from '@/lib/budgetSuggestion';
+import { CATEGORY_OPTIONS, categoryLabel } from '@/lib/categories';
+import { formatTHB, bahtToSatang } from '@/lib/money';
 import PageHeader from '@/components/PageHeader';
 import FieldLabel from '@/components/FieldLabel';
 
 const BUDGETABLE_CATEGORIES = CATEGORY_OPTIONS.filter((option) => option.kind === 'expense' && option.id !== 'transfers');
 const SUGGESTION_HISTORY_MONTHS = 3;
+
+/** One row in the suggestion list/modal -- shared between the history-based and income-ratio-based suggestion UIs. */
+const SuggestionRow: React.FC<{
+  label: string;
+  suggestedSatang: number;
+  note: string | null;
+  checked: boolean;
+  onToggle: (checked: boolean) => void;
+  alreadyBudgeted: boolean;
+  first: boolean;
+}> = ({ label, suggestedSatang, note, checked, onToggle, alreadyBudgeted, first }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: first ? 'none' : '1px solid var(--tl-border)' }}>
+    <IonCheckbox checked={checked} onIonChange={(e) => onToggle(e.detail.checked)} aria-label={`เลือกหมวดหมู่ ${label}`} />
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--tl-text-secondary)' }}>
+        {alreadyBudgeted ? 'มีงบอยู่แล้ว — จะถูกแทนที่' : 'ยังไม่มีงบ'}
+        {note && ` · ${note}`}
+      </p>
+    </div>
+    <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap' }}>{formatTHB(suggestedSatang)}</span>
+  </div>
+);
 
 const BudgetEditPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -51,6 +75,7 @@ const BudgetEditPage: React.FC = () => {
   const [suggestionOpen, setSuggestionOpen] = useState(false);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<BudgetSuggestion | null>(null);
+  const [ratioSuggestion, setRatioSuggestion] = useState<IncomeRatioSuggestion | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set());
   const [applyingSuggestion, setApplyingSuggestion] = useState(false);
 
@@ -116,6 +141,7 @@ const BudgetEditPage: React.FC = () => {
     setSuggestionOpen(true);
     setSuggestionLoading(true);
     setSuggestion(null);
+    setRatioSuggestion(null);
     setSelectedLabels(new Set());
     try {
       const currentMonth = currentBangkokMonth();
@@ -125,13 +151,32 @@ const BudgetEditPage: React.FC = () => {
       const priorMonths = Array.from({ length: SUGGESTION_HISTORY_MONTHS }, (_, i) => shiftBangkokMonth(currentMonth, -(i + 1)));
       const monthTransactions = await Promise.all(priorMonths.map((m) => listTransactionsForMonth(m)));
       const result = suggestBudgetFromHistory(monthTransactions);
-      setSuggestion(result);
-      // Pre-select every suggested category not already budgeted -- an
-      // already-budgeted category is left unchecked by default so applying
-      // suggestions doesn't silently overwrite a number the user set on
-      // purpose, without the user having to uncheck it themselves first.
+
       const alreadyBudgeted = new Set(categories.map((c) => c.label));
-      setSelectedLabels(new Set(result.categories.filter((c) => !alreadyBudgeted.has(c.label)).map((c) => c.label)));
+
+      if (!result.insufficientData) {
+        setSuggestion(result);
+        // Pre-select every suggested category not already budgeted -- an
+        // already-budgeted category is left unchecked by default so applying
+        // suggestions doesn't silently overwrite a number the user set on
+        // purpose, without the user having to uncheck it themselves first.
+        setSelectedLabels(new Set(result.categories.filter((c) => !alreadyBudgeted.has(c.label)).map((c) => c.label)));
+        return;
+      }
+
+      // Not enough real spending history to average -- fall back to a
+      // generic income-ratio rule of thumb instead (see
+      // suggestBudgetFromIncomeRatio's own comment: this is NOT a
+      // personalized AI analysis, just a common budgeting framework
+      // applied to this app's category list, clearly labeled as such below).
+      const incomeSatang = bahtToSatang(income || '0');
+      const snapshot = await getOverviewSnapshot().catch(() => null);
+      const ratioResult = suggestBudgetFromIncomeRatio(incomeSatang, snapshot?.totalMinimumDueSatang ?? 0, categoryLabel);
+      setRatioSuggestion(ratioResult);
+      if (!ratioResult.insufficientData) {
+        const allRatioItems = [...ratioResult.needs, ...ratioResult.wants, ...(ratioResult.debtSuggestion ? [ratioResult.debtSuggestion] : [])];
+        setSelectedLabels(new Set(allRatioItems.filter((item) => !alreadyBudgeted.has(item.label)).map((item) => item.label)));
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'วิเคราะห์ประวัติการใช้จ่ายไม่สำเร็จ');
       setSuggestionOpen(false);
@@ -150,10 +195,17 @@ const BudgetEditPage: React.FC = () => {
   };
 
   const handleApplySuggestions = async () => {
-    if (!budgetId || !suggestion) return;
+    if (!budgetId) return;
+    const items: { label: string; suggestedSatang: number }[] = suggestion
+      ? suggestion.categories
+      : ratioSuggestion
+        ? [...ratioSuggestion.needs, ...ratioSuggestion.wants, ...(ratioSuggestion.debtSuggestion ? [ratioSuggestion.debtSuggestion] : [])]
+        : [];
+    if (items.length === 0) return;
+
     setApplyingSuggestion(true);
     try {
-      for (const item of suggestion.categories) {
+      for (const item of items) {
         if (!selectedLabels.has(item.label)) continue;
         const existing = categories.find((c) => c.label === item.label);
         const amountBaht = String(item.suggestedSatang / 100);
@@ -294,10 +346,72 @@ const BudgetEditPage: React.FC = () => {
               <div className="ion-text-center ion-margin-top"><IonSpinner /></div>
             )}
 
-            {!suggestionLoading && suggestion?.insufficientData && (
+            {!suggestionLoading && ratioSuggestion?.insufficientData && (
               <p style={{ marginTop: 12, fontSize: 13, color: 'var(--tl-text-secondary)', textAlign: 'center' }}>
-                ยังมีประวัติการใช้จ่ายไม่พอให้วิเคราะห์ ({suggestion.totalTransactionsAnalyzed} รายการใน {suggestion.monthsAnalyzed} เดือนที่ผ่านมา) — ลองใหม่อีกครั้งเมื่อมีรายการมากขึ้น
+                กรุณากรอกรายรับเดือนนี้ก่อน ระบบจะแนะนำสัดส่วนงบให้จากรายรับ
               </p>
+            )}
+
+            {!suggestionLoading && ratioSuggestion && !ratioSuggestion.insufficientData && (
+              <>
+                <div
+                  style={{
+                    background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '10px 12px', marginBottom: 14,
+                    fontSize: 12, color: '#9a3412', lineHeight: 1.5,
+                  }}
+                >
+                  ยังมีประวัติการใช้จ่ายไม่พอให้วิเคราะห์จริง ({suggestion?.totalTransactionsAnalyzed ?? 0} รายการ) — นี่คือสัดส่วนงบตามหลักการเงินทั่วไป (จำเป็น 50% / อยากได้ 30% ของรายรับ) ไม่ใช่การวิเคราะห์เฉพาะบุคคล ปรับได้ตามจริงหลังใช้งานสักพัก
+                </div>
+
+                {ratioSuggestion.debtSuggestion && (
+                  <>
+                    <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--tl-text-secondary)' }}>หนี้ (จากยอดขั้นต่ำจริง)</p>
+                    <div className="tl-card" style={{ padding: '4px 16px', marginBottom: 14 }}>
+                      <SuggestionRow
+                        label={ratioSuggestion.debtSuggestion.label}
+                        suggestedSatang={ratioSuggestion.debtSuggestion.suggestedSatang}
+                        note={null}
+                        checked={selectedLabels.has(ratioSuggestion.debtSuggestion.label)}
+                        onToggle={(checked) => toggleSuggestionLabel(ratioSuggestion.debtSuggestion!.label, checked)}
+                        alreadyBudgeted={categories.some((c) => c.label === ratioSuggestion.debtSuggestion!.label)}
+                        first
+                      />
+                    </div>
+                  </>
+                )}
+
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--tl-text-secondary)' }}>จำเป็น (50% ของรายรับ)</p>
+                <div className="tl-card" style={{ padding: '4px 16px', marginBottom: 14 }}>
+                  {ratioSuggestion.needs.map((item, index) => (
+                    <SuggestionRow
+                      key={item.label}
+                      label={item.label}
+                      suggestedSatang={item.suggestedSatang}
+                      note={null}
+                      checked={selectedLabels.has(item.label)}
+                      onToggle={(checked) => toggleSuggestionLabel(item.label, checked)}
+                      alreadyBudgeted={categories.some((c) => c.label === item.label)}
+                      first={index === 0}
+                    />
+                  ))}
+                </div>
+
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--tl-text-secondary)' }}>อยากได้ (30% ของรายรับ)</p>
+                <div className="tl-card" style={{ padding: '4px 16px' }}>
+                  {ratioSuggestion.wants.map((item, index) => (
+                    <SuggestionRow
+                      key={item.label}
+                      label={item.label}
+                      suggestedSatang={item.suggestedSatang}
+                      note={null}
+                      checked={selectedLabels.has(item.label)}
+                      onToggle={(checked) => toggleSuggestionLabel(item.label, checked)}
+                      alreadyBudgeted={categories.some((c) => c.label === item.label)}
+                      first={index === 0}
+                    />
+                  ))}
+                </div>
+              </>
             )}
 
             {!suggestionLoading && suggestion && !suggestion.insufficientData && (
@@ -306,29 +420,18 @@ const BudgetEditPage: React.FC = () => {
                   จากค่าเฉลี่ย {suggestion.monthsAnalyzed} เดือนที่ผ่านมา ({suggestion.totalTransactionsAnalyzed} รายการ) เลือกหมวดที่จะนำมาใช้
                 </p>
                 <div className="tl-card" style={{ padding: '4px 16px' }}>
-                  {suggestion.categories.map((item, index) => {
-                    const alreadyBudgeted = categories.some((c) => c.label === item.label);
-                    return (
-                      <div
-                        key={item.label}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: index === 0 ? 'none' : '1px solid var(--tl-border)' }}
-                      >
-                        <IonCheckbox
-                          checked={selectedLabels.has(item.label)}
-                          onIonChange={(e) => toggleSuggestionLabel(item.label, e.detail.checked)}
-                          aria-label={`เลือกหมวดหมู่ ${item.label}`}
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{item.label}</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--tl-text-secondary)' }}>
-                            {alreadyBudgeted ? 'มีงบอยู่แล้ว — จะถูกแทนที่' : 'ยังไม่มีงบ'}
-                            {item.monthsWithSpend < suggestion.monthsAnalyzed && ` · ใช้จ่ายแค่ ${item.monthsWithSpend}/${suggestion.monthsAnalyzed} เดือน`}
-                          </p>
-                        </div>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap' }}>{formatTHB(item.suggestedSatang)}</span>
-                      </div>
-                    );
-                  })}
+                  {suggestion.categories.map((item, index) => (
+                    <SuggestionRow
+                      key={item.label}
+                      label={item.label}
+                      suggestedSatang={item.suggestedSatang}
+                      note={item.monthsWithSpend < suggestion.monthsAnalyzed ? `ใช้จ่ายแค่ ${item.monthsWithSpend}/${suggestion.monthsAnalyzed} เดือน` : null}
+                      checked={selectedLabels.has(item.label)}
+                      onToggle={(checked) => toggleSuggestionLabel(item.label, checked)}
+                      alreadyBudgeted={categories.some((c) => c.label === item.label)}
+                      first={index === 0}
+                    />
+                  ))}
                 </div>
               </>
             )}
@@ -338,7 +441,7 @@ const BudgetEditPage: React.FC = () => {
             )}
 
             <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {!suggestionLoading && suggestion && !suggestion.insufficientData && (
+              {!suggestionLoading && ((suggestion && !suggestion.insufficientData) || (ratioSuggestion && !ratioSuggestion.insufficientData)) && (
                 <IonButton
                   expand="block"
                   disabled={applyingSuggestion || selectedLabels.size === 0}

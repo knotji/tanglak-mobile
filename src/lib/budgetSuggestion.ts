@@ -97,3 +97,99 @@ export function suggestBudgetFromHistory(transactionsByMonth: Transaction[][]): 
     insufficientData: totalTransactionsAnalyzed < MIN_TRANSACTIONS_FOR_SUGGESTION || categories.length === 0,
   };
 }
+
+// --- Income-ratio fallback: for a user with too little (or no) categorized
+// spending history to average from (see suggestBudgetFromHistory above).
+// Rather than a real Gemini call, this applies common budgeting
+// rules-of-thumb (needs ~50% / wants ~30% / savings-debt ~20% of income,
+// per widely-cited frameworks like the "50/30/20" rule) as fixed weights
+// over this app's own expense category list. It's a generic starting
+// point the user is expected to adjust, not a personalized analysis --
+// labelled as such in the UI.
+//
+// Weights are relative shares of the "needs"/"wants" pools (each pool's
+// weights sum to 1.0 within that pool), not literal percent-of-income
+// values, so NEEDS_RATIO/WANTS_RATIO below can be tuned without having to
+// re-balance every individual category weight.
+const NEEDS_RATIO = 0.5;
+const WANTS_RATIO = 0.3;
+// The remaining ~0.2 of income is intentionally left unallocated here --
+// that's the "savings/debt" share, and this app already has a much better
+// source for the debt portion specifically (the user's real minimum-due
+// total) than a generic guess, applied separately below.
+
+const NEEDS_WEIGHTS: Record<string, number> = {
+  groceries: 0.28,
+  housing: 0.32,
+  utilities: 0.12,
+  transport: 0.14,
+  health: 0.08,
+  insurance: 0.06,
+};
+
+const WANTS_WEIGHTS: Record<string, number> = {
+  food: 0.22,
+  shopping: 0.16,
+  entertainment: 0.14,
+  subscriptions: 0.08,
+  personal_care: 0.1,
+  fitness: 0.08,
+  travel: 0.1,
+  family: 0.06,
+  gifts: 0.06,
+};
+
+export interface RatioCategorySuggestion {
+  categoryId: string;
+  label: string;
+  suggestedSatang: number;
+}
+
+export interface IncomeRatioSuggestion {
+  needs: RatioCategorySuggestion[];
+  wants: RatioCategorySuggestion[];
+  /** From the user's real minimum-payment total, not a generic percentage -- see suggestBudgetFromIncomeRatio's own comment. */
+  debtSuggestion: { categoryId: 'debt'; label: string; suggestedSatang: number } | null;
+  insufficientData: boolean;
+}
+
+/**
+ * Fallback for when suggestBudgetFromHistory has too little real spending
+ * history to work from. `incomeSatang` is the user's own planned monthly
+ * income (same figure already entered on this page); `totalMinimumDueSatang`
+ * is their actual current debt-minimum total from getOverviewSnapshot, used
+ * to size the debt category directly from real obligations instead of a
+ * generic percentage -- unlike every other category here, debt payments
+ * aren't a lifestyle choice to suggest a ratio for.
+ */
+export function suggestBudgetFromIncomeRatio(
+  incomeSatang: number,
+  totalMinimumDueSatang: number,
+  categoryLabelById: (id: string) => string,
+): IncomeRatioSuggestion {
+  if (incomeSatang <= 0) {
+    return { needs: [], wants: [], debtSuggestion: null, insufficientData: true };
+  }
+
+  const needsPoolSatang = Math.round(incomeSatang * NEEDS_RATIO);
+  const wantsPoolSatang = Math.round(incomeSatang * WANTS_RATIO);
+
+  const toSuggestions = (weights: Record<string, number>, poolSatang: number): RatioCategorySuggestion[] =>
+    Object.entries(weights)
+      .map(([categoryId, weight]) => ({
+        categoryId,
+        label: categoryLabelById(categoryId),
+        suggestedSatang: Math.max(ROUND_TO_SATANG, Math.round((poolSatang * weight) / ROUND_TO_SATANG) * ROUND_TO_SATANG),
+      }))
+      .sort((a, b) => b.suggestedSatang - a.suggestedSatang);
+
+  return {
+    needs: toSuggestions(NEEDS_WEIGHTS, needsPoolSatang),
+    wants: toSuggestions(WANTS_WEIGHTS, wantsPoolSatang),
+    debtSuggestion:
+      totalMinimumDueSatang > 0
+        ? { categoryId: 'debt', label: categoryLabelById('debt'), suggestedSatang: Math.ceil(totalMinimumDueSatang / ROUND_TO_SATANG) * ROUND_TO_SATANG }
+        : null,
+    insufficientData: false,
+  };
+}
