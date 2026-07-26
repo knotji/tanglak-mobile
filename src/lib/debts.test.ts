@@ -4,6 +4,7 @@ import {
   daysInMonth,
   daysUntilDue,
   debtDueStatus,
+  findDebtForMerchant,
   formatInterestRateSummary,
   nextDueDate,
   paymentProgress,
@@ -261,5 +262,37 @@ describe('shouldAutoAdvance', () => {
 
   it('is true only when fully paid AND overdue', () => {
     expect(shouldAutoAdvance(makeDebt({ dueDate: PAST_DUE, amountDueSatang: 1000, amountPaidThisCycleSatang: 1000 }))).toBe(true);
+  });
+});
+
+describe('findDebtForMerchant', () => {
+  it('matches on an exact debt name, case/whitespace-insensitive', () => {
+    const debts = [makeDebt({ id: 'a', name: 'KTC Credit Card' })];
+    expect(findDebtForMerchant('  ktc   credit card ', debts)?.id).toBe('a');
+  });
+
+  it('matches on creditor when name does not match', () => {
+    const debts = [makeDebt({ id: 'a', name: 'บัตรหลัก', creditor: 'Krungsri Consumer' })];
+    expect(findDebtForMerchant('krungsri consumer', debts)?.id).toBe('a');
+  });
+
+  it('matches a substring in either direction', () => {
+    const debts = [makeDebt({ id: 'a', name: 'AEON' })];
+    expect(findDebtForMerchant('AEON Thana Sinsap', debts)?.id).toBe('a');
+  });
+
+  it('returns null when nothing matches', () => {
+    const debts = [makeDebt({ id: 'a', name: 'KTC' })];
+    expect(findDebtForMerchant('7-Eleven', debts)).toBeNull();
+  });
+
+  it('returns null (not a guess) when the name matches more than one debt', () => {
+    const debts = [makeDebt({ id: 'a', name: 'Krungsri Card' }), makeDebt({ id: 'b', name: 'Krungsri Loan' })];
+    expect(findDebtForMerchant('Krungsri', debts)).toBeNull();
+  });
+
+  it('returns null for an empty merchant name or empty debt list', () => {
+    expect(findDebtForMerchant('', [makeDebt()])).toBeNull();
+    expect(findDebtForMerchant('KTC', [])).toBeNull();
   });
 });

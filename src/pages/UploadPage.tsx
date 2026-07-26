@@ -18,7 +18,7 @@ import { extractDocument, type ExtractedFinancialDocument } from '@/lib/document
 import { saveTransaction, type SaveTransactionInput } from '@/lib/saveTransaction';
 import { addDebtPayment } from '@/lib/addDebtPayment';
 import { CATEGORY_OPTIONS } from '@/lib/categories';
-import { listDebts, type Debt } from '@/lib/debts';
+import { listDebts, findDebtForMerchant, type Debt } from '@/lib/debts';
 import { nowBangkokDatetimeLocal } from '@/lib/bangkokDate';
 import { isoInstantToBangkokDatetimeLocal } from '@/lib/date';
 import { checkDuplicateTransaction } from '@/lib/transactions';
@@ -36,6 +36,7 @@ interface DraftForm {
   datetimeLocal: string;
   categoryId: string;
   debtId: string;
+  debtAutoMatched?: boolean;
   isDuplicate?: boolean;
   refNo?: string;
   bankChannel?: string;
@@ -55,7 +56,7 @@ function datetimeLocalToIso(value: string): string {
   return value ? `${value}:00+07:00` : '';
 }
 
-function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
+function draftFromExtraction(result: ExtractedFinancialDocument, debts: Debt[]): DraftForm {
   const type = result.transaction?.type;
   const savableType: SavableType =
     type === 'income' || type === 'transfer' || type === 'refund' || type === 'debt_payment' ? type : 'expense';
@@ -65,13 +66,26 @@ function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
     const matched = findCategoryForMerchant(merchant);
     if (matched) categoryId = matched;
   }
+  // Only worth matching against a debt when the AI already thinks this is a
+  // debt payment -- an expense/transfer slip's merchant isn't a creditor.
+  let debtId = '';
+  let debtAutoMatched = false;
+  if (savableType === 'debt_payment') {
+    const nameToMatch = result.transaction?.receiverName || merchant;
+    const matchedDebt = findDebtForMerchant(nameToMatch, debts);
+    if (matchedDebt) {
+      debtId = matchedDebt.id;
+      debtAutoMatched = true;
+    }
+  }
   return {
     type: savableType,
     amount: result.transaction?.amount !== undefined ? String(result.transaction.amount) : '',
     merchant,
     datetimeLocal: result.transaction?.occurredAt ? isoInstantToBangkokDatetimeLocal(result.transaction.occurredAt) : '',
     categoryId,
-    debtId: '',
+    debtId,
+    debtAutoMatched,
     refNo: result.transaction?.refNo,
     bankChannel: result.transaction?.bankChannel ?? result.transaction?.paymentMethod,
     senderName: result.transaction?.senderName,
@@ -215,7 +229,7 @@ const UploadPage: React.FC = () => {
       const url = URL.createObjectURL(files[i]);
       try {
         const result = await extractDocument(files[i]);
-        const d = draftFromExtraction(result);
+        const d = draftFromExtraction(result, debts);
         entries.push({ previewUrl: url, draft: d, unclearFields: result.unclearFields });
       } catch {
         failCount += 1;
@@ -457,17 +471,24 @@ const UploadPage: React.FC = () => {
                       ยังไม่มีรายการหนี้ในระบบ — เพิ่มหนี้ในแท็บ &quot;หนี้สิน&quot; ก่อน
                     </p>
                   ) : (
-                    <IonSelect
-                      fill="outline"
-                      interface="action-sheet"
-                      placeholder="เลือกหนี้"
-                      value={draft.debtId}
-                      onIonChange={(e) => setDraft({ ...draft, debtId: e.detail.value })}
-                    >
-                      {debts.map((debt) => (
-                        <IonSelectOption key={debt.id} value={debt.id}>{debt.name}</IonSelectOption>
-                      ))}
-                    </IonSelect>
+                    <>
+                      <IonSelect
+                        fill="outline"
+                        interface="action-sheet"
+                        placeholder="เลือกหนี้"
+                        value={draft.debtId}
+                        onIonChange={(e) => setDraft({ ...draft, debtId: e.detail.value, debtAutoMatched: false })}
+                      >
+                        {debts.map((debt) => (
+                          <IonSelectOption key={debt.id} value={debt.id}>{debt.name}</IonSelectOption>
+                        ))}
+                      </IonSelect>
+                      {draft.debtAutoMatched && (
+                        <p style={{ fontSize: 12, color: 'var(--tl-text-secondary)', margin: '4px 0 0' }}>
+                          จับคู่หนี้ให้อัตโนมัติจากชื่อในสลิป — ตรวจสอบก่อนบันทึก
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               ) : (

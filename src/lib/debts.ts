@@ -113,6 +113,45 @@ export async function getDebtById(id: string): Promise<Debt | null> {
   return data ? mapRow(data) : null;
 }
 
+function normalizeForMatch(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Best-effort match from a scanned slip's merchant/payee name to one of the
+ * user's existing debts, for pre-selecting the "หนี้ที่จะจ่าย" picker on a
+ * debt_payment entry (previously always left blank -- the user had to pick
+ * manually every time, even when the AI had already read a name that
+ * unambiguously matched an existing debt).
+ *
+ * Deliberately conservative: only returns a match when exactly one debt's
+ * name or creditor matches, never guesses between two candidates. Picking
+ * the wrong debt would misattribute a real payment -- silently wrong is
+ * worse than not pre-filled at all, consistent with this app's rule against
+ * silent financial state changes (see shouldAutoAdvance above).
+ */
+export function findDebtForMerchant(merchantName: string, debts: Debt[]): Debt | null {
+  if (!merchantName) return null;
+  const normalized = normalizeForMatch(merchantName);
+  if (!normalized) return null;
+
+  const candidates = (field: (debt: Debt) => string | null) =>
+    debts.filter((debt) => {
+      const value = field(debt);
+      if (!value) return false;
+      const normalizedField = normalizeForMatch(value);
+      return normalizedField === normalized || normalized.includes(normalizedField) || normalizedField.includes(normalized);
+    });
+
+  const byName = candidates((debt) => debt.name);
+  if (byName.length === 1) return byName[0];
+
+  const byCreditor = candidates((debt) => debt.creditor);
+  if (byCreditor.length === 1) return byCreditor[0];
+
+  return null;
+}
+
 // --- Create/update/delete. No Edge Function needed here: every invariant
 // that matters (nonnegative money columns, minimum_payment_satang <=
 // outstanding_balance_satang, interest rate 0-100, due_date a real
