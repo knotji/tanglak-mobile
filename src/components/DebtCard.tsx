@@ -11,6 +11,7 @@ import {
 import { formatTHB } from '@/lib/money';
 import { formatThaiDateLabel } from '@/lib/date';
 import { usePrivacyMode, maskAmount } from '@/lib/privacyStore';
+import { TONE } from '@/theme/tokens';
 
 const STATUS_ICON = {
   not_yet_due: calendarClearOutline,
@@ -22,12 +23,12 @@ const STATUS_ICON = {
 } as const;
 
 const STATUS_TONE = {
-  not_yet_due: { bg: '#f1f5f9', fg: '#64748b' },
-  due_soon: { bg: '#fef3c7', fg: '#b45309' },
-  due_today: { bg: '#fee2e2', fg: '#dc2626' },
-  overdue: { bg: '#fee2e2', fg: '#dc2626' },
-  minimum_paid: { bg: '#d1fae5', fg: '#047857' },
-  cycle_paid_in_full: { bg: '#d1fae5', fg: '#047857' },
+  not_yet_due: TONE.neutral,
+  due_soon: TONE.warning,
+  due_today: TONE.danger,
+  overdue: TONE.danger,
+  minimum_paid: TONE.success,
+  cycle_paid_in_full: TONE.success,
 } as const;
 
 const Stat: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (

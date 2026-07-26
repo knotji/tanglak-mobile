@@ -31,6 +31,7 @@ import {
   type DebtSimulationOutput,
   type ExtraPaymentBehavior,
 } from '@/lib/debtSimulator';
+import { TONE, type Tone } from '@/theme/tokens';
 
 const AFFORDABILITY_LABEL: Record<AffordabilityStatus, string> = {
   safe: 'ปลอดภัย',
@@ -39,11 +40,11 @@ const AFFORDABILITY_LABEL: Record<AffordabilityStatus, string> = {
   insufficient_data: 'ข้อมูลยังไม่พอ',
 };
 
-const AFFORDABILITY_TONE: Record<AffordabilityStatus, { bg: string; fg: string }> = {
-  safe: { bg: '#ecfdf5', fg: '#047857' },
-  tight: { bg: '#fef3c7', fg: '#b45309' },
-  risky: { bg: '#fee2e2', fg: '#dc2626' },
-  insufficient_data: { bg: '#f1f5f9', fg: '#64748b' },
+const AFFORDABILITY_TONE: Record<AffordabilityStatus, Tone> = {
+  safe: TONE.successSoft,
+  tight: TONE.warning,
+  risky: TONE.danger,
+  insufficient_data: TONE.neutral,
 };
 
 const EXTRA_BEHAVIOR_LABEL: Record<ExtraPaymentBehavior, string> = {

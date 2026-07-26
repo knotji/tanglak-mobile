@@ -219,6 +219,22 @@ export interface DebtFormInput {
   notes?: string;
 }
 
+/** Maps a loaded Debt back into editable DebtFormInput strings (satang -> baht), for pre-filling DebtFormPage's edit form. */
+export function debtToFormInput(debt: Debt): DebtFormInput {
+  return {
+    name: debt.name,
+    creditor: debt.creditor ?? '',
+    outstanding: debt.outstandingBalanceSatang !== null ? String(debt.outstandingBalanceSatang / 100) : '',
+    amountDue: debt.amountDueSatang !== null ? String(debt.amountDueSatang / 100) : '',
+    minimum: debt.minimumPaymentSatang !== null ? String(debt.minimumPaymentSatang / 100) : '',
+    dueDate: debt.dueDate ?? '',
+    recurringDueDay: debt.recurringDueDay !== null ? String(debt.recurringDueDay) : '',
+    paymentMode: debt.paymentMode,
+    interestRateAnnual: debt.interestRateAnnual !== null ? String(debt.interestRateAnnual) : '',
+    notes: debt.notes ?? '',
+  };
+}
+
 function isValidDueDate(raw: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
   if (!match) return false;

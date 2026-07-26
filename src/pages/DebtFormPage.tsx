@@ -29,6 +29,7 @@ import {
   deleteDebt,
   advanceDebtCycle,
   previewCycleAdvance,
+  debtToFormInput,
   type Debt,
   type DebtFormInput,
 } from '@/lib/debts';
@@ -74,18 +75,7 @@ const DebtFormPage: React.FC = () => {
         return;
       }
       setDebt(loaded);
-      setForm({
-        name: loaded.name,
-        creditor: loaded.creditor ?? '',
-        outstanding: loaded.outstandingBalanceSatang !== null ? String(loaded.outstandingBalanceSatang / 100) : '',
-        amountDue: loaded.amountDueSatang !== null ? String(loaded.amountDueSatang / 100) : '',
-        minimum: loaded.minimumPaymentSatang !== null ? String(loaded.minimumPaymentSatang / 100) : '',
-        dueDate: loaded.dueDate ?? '',
-        recurringDueDay: loaded.recurringDueDay !== null ? String(loaded.recurringDueDay) : '',
-        paymentMode: loaded.paymentMode,
-        interestRateAnnual: loaded.interestRateAnnual !== null ? String(loaded.interestRateAnnual) : '',
-        notes: loaded.notes ?? '',
-      });
+      setForm(debtToFormInput(loaded));
     });
 
   useIonViewWillEnter(() => {
