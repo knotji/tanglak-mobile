@@ -1,5 +1,31 @@
 import { supabase } from '@/lib/supabaseClient';
 import { bahtToSatang } from '@/lib/money';
+import { advanceDebtCycle } from '@/lib/debtCycleAdvance';
+
+// Re-exported so existing call sites (13 files) don't need to change their
+// import path after this file was split into debts.ts (CRUD/reads, this
+// file), debtStatus.ts (pure status/progress calculations), and
+// debtCycleAdvance.ts (cycle-advance writes) -- matches the web app's own
+// file layout (tanglak/src/lib/finance/{calculations,debt-status,debt-interest}.ts).
+import { daysUntilDue } from '@/lib/debtStatus';
+export {
+  remainingToMinimum,
+  paymentProgress,
+  daysUntilDue,
+  debtDueStatus,
+  formatInterestRateSummary,
+  DEBT_DUE_STATUS_LABEL_TH,
+  type DebtDueStatus,
+} from '@/lib/debtStatus';
+export {
+  daysInMonth,
+  shiftDateKeyByOneMonth,
+  nextDueDate,
+  addOneDay,
+  previewCycleAdvance,
+  advanceDebtCycle,
+  type CycleAdvancePreview,
+} from '@/lib/debtCycleAdvance';
 
 export interface Debt {
   id: string;
@@ -89,19 +115,31 @@ export function shouldAutoAdvance(debt: Debt): boolean {
   return daysUntilDue(debt.dueDate) < 0;
 }
 
+// listDebts() is called from nearly every page that touches debts (Today,
+// Overview, Debts, Upload, DebtSimulate, DebtStrategy, Settings), and each
+// call independently re-checks every debt for auto-advance eligibility --
+// correct, but wasteful: a debt that was already advanced (or attempted)
+// this session doesn't need re-checking on every single tab switch. This
+// session-lifetime set (cleared on full app reload, never persisted) skips
+// a debt once its auto-advance has been attempted, so navigating between
+// debt-adjacent pages doesn't re-trigger the same write+reread every time.
+const autoAdvanceAttemptedThisSession = new Set<string>();
+
 /** Matches tanglak's listDebts default (includeClosed=false): excludes deleted and paid_off. Auto-advances any debt whose cycle is fully paid and past due before returning (see shouldAutoAdvance). */
 export async function listDebts(): Promise<Debt[]> {
   const debts = await fetchDebtRows();
-  const toAdvance = debts.filter(shouldAutoAdvance);
+  const toAdvance = debts.filter((debt) => shouldAutoAdvance(debt) && !autoAdvanceAttemptedThisSession.has(debt.id));
   if (toAdvance.length === 0) return debts;
 
   for (const debt of toAdvance) {
+    autoAdvanceAttemptedThisSession.add(debt.id);
     try {
       await advanceDebtCycle(debt);
     } catch {
       // Best-effort: a failed auto-advance (e.g. a transient network blip)
-      // should never block the user from seeing their debt list. It will
-      // simply be retried on the next load.
+      // should never block the user from seeing their debt list. Retried on
+      // the next full app launch (this session-lifetime guard only skips
+      // re-attempting within the same session, not permanently).
     }
   }
   return fetchDebtRows();
@@ -257,179 +295,4 @@ export async function updateDebt(id: string, input: DebtFormInput): Promise<void
 export async function deleteDebt(id: string): Promise<void> {
   const { error } = await supabase.from('debts').update({ status: 'deleted', deleted_at: new Date().toISOString() }).eq('id', id);
   if (error) throw new Error('ลบหนี้ไม่สำเร็จ');
-}
-
-// --- Pure calculations, ported from tanglak/src/lib/finance/{calculations,debt-status,debt-interest}.ts ---
-
-export function remainingToMinimum(debt: Debt): number {
-  return Math.max(0, (debt.minimumPaymentSatang ?? 0) - debt.amountPaidThisCycleSatang);
-}
-
-export function paymentProgress(debt: Debt): number {
-  const target = debt.minimumPaymentSatang ?? debt.amountDueSatang ?? 0;
-  if (target <= 0) return 1;
-  return Math.min(1, debt.amountPaidThisCycleSatang / target);
-}
-
-function getBangkokTodayString(date: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
-  const year = parts.find((p) => p.type === 'year')!.value;
-  const month = parts.find((p) => p.type === 'month')!.value;
-  const day = parts.find((p) => p.type === 'day')!.value;
-  return `${year}-${month}-${day}`;
-}
-
-export function daysUntilDue(dueDate: string, today = new Date()): number {
-  const [todayYear, todayMonth, todayDay] = getBangkokTodayString(today).split('-').map(Number);
-  const start = Date.UTC(todayYear, todayMonth - 1, todayDay);
-  const [year, month, day] = dueDate.split('-').map(Number);
-  const due = Date.UTC(year, month - 1, day);
-  return Math.ceil((due - start) / 86_400_000);
-}
-
-export type DebtDueStatus = 'not_yet_due' | 'due_soon' | 'due_today' | 'overdue' | 'minimum_paid' | 'cycle_paid_in_full';
-
-export const DEBT_DUE_STATUS_LABEL_TH: Record<DebtDueStatus, string> = {
-  not_yet_due: 'ยังไม่ถึงกำหนด',
-  due_soon: 'ใกล้ครบกำหนด',
-  due_today: 'ครบกำหนดวันนี้',
-  overdue: 'เกินกำหนด',
-  minimum_paid: 'จ่ายขั้นต่ำแล้ว',
-  cycle_paid_in_full: 'จ่ายครบยอดรอบนี้แล้ว',
-};
-
-const DEBT_DUE_SOON_WINDOW_DAYS = 3;
-
-export function debtDueStatus(debt: Debt, today: Date = new Date()): DebtDueStatus {
-  const paid = debt.amountPaidThisCycleSatang;
-  if (debt.amountDueSatang !== null && debt.amountDueSatang !== undefined && debt.amountDueSatang > 0 && paid >= debt.amountDueSatang) {
-    return 'cycle_paid_in_full';
-  }
-  if (debt.minimumPaymentSatang !== null && debt.minimumPaymentSatang !== undefined && debt.minimumPaymentSatang > 0 && paid >= debt.minimumPaymentSatang) {
-    return 'minimum_paid';
-  }
-  if (!debt.dueDate) return 'not_yet_due';
-  const days = daysUntilDue(debt.dueDate, today);
-  if (days < 0) return 'overdue';
-  if (days === 0) return 'due_today';
-  if (days <= DEBT_DUE_SOON_WINDOW_DAYS) return 'due_soon';
-  return 'not_yet_due';
-}
-
-function formatRateNumber(rate: number): string {
-  return Number(rate.toFixed(2)).toString();
-}
-
-/** "ดอกเบี้ย 16.5% ต่อปี (ประมาณ 1.38% ต่อเดือน)" */
-export function formatInterestRateSummary(annualRatePercent: number): string {
-  const monthly = annualRatePercent / 12;
-  return `ดอกเบี้ย ${formatRateNumber(annualRatePercent)}% ต่อปี (ประมาณ ${formatRateNumber(monthly)}% ต่อเดือน)`;
-}
-
-// --- Advance to next cycle. Explicit user action only -- never automatic.
-// tanglak's own debt-status.ts is explicit that "cycle_paid_in_full ...
-// must never be" auto-transitioned into anything else; the same "no
-// silent financial-state transition" philosophy applies here. Neither the
-// web app nor mobile has ever had an auto-rollover feature -- this is a
-// new, mobile-first feature, deliberately scoped to just moving the
-// static due_date/cycle_start_date/cycle_end_date fields forward by one
-// month and recomputing amount_paid_this_cycle_satang for the new
-// window. It never touches outstanding_balance_satang (a human must
-// still update that from their actual statement -- advancing the cycle
-// is not the same claim as "the balance changed"). ---
-
-export function daysInMonth(year: number, month1based: number): number {
-  return new Date(Date.UTC(year, month1based, 0)).getUTCDate();
-}
-
-/** Shifts a YYYY-MM-DD date forward by exactly one month, clamping the day if the target month is shorter. */
-export function shiftDateKeyByOneMonth(dateKey: string): string {
-  const [y, m, d] = dateKey.split('-').map(Number);
-  const targetYear = m === 12 ? y + 1 : y;
-  const targetMonth = m === 12 ? 1 : m + 1;
-  const day = Math.min(d, daysInMonth(targetYear, targetMonth));
-  return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-/** Same as shiftDateKeyByOneMonth, but uses recurringDueDay for the target day when set (matches "due on the Nth of every month" semantics) instead of preserving the original day-of-month. */
-export function nextDueDate(currentDueDate: string, recurringDueDay: number | null): string {
-  if (!recurringDueDay) return shiftDateKeyByOneMonth(currentDueDate);
-  const [y, m] = currentDueDate.split('-').map(Number);
-  const targetYear = m === 12 ? y + 1 : y;
-  const targetMonth = m === 12 ? 1 : m + 1;
-  const day = Math.min(recurringDueDay, daysInMonth(targetYear, targetMonth));
-  return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function bangkokDateStartInstant(dateKey: string): string {
-  return `${dateKey}T00:00:00+07:00`;
-}
-
-/** Recomputes amount_paid_this_cycle_satang from scratch for whatever cycle window the debt currently has (explicit cycle dates, or the current Bangkok calendar month as fallback) -- same logic as supabase/functions/_shared/debtCycle.ts, ported for direct client use since this write needs no elevated privilege (RLS + the debt's own ownership already scope it). */
-async function recalculateAmountPaidThisCycle(debtId: string): Promise<void> {
-  const { data: debt, error: debtError } = await supabase
-    .from('debts')
-    .select('cycle_start_date, cycle_end_date')
-    .eq('id', debtId)
-    .maybeSingle();
-  if (debtError || !debt) throw new Error('ไม่พบหนี้นี้');
-
-  let startInstant: string;
-  let endExclusiveInstant: string;
-  if (debt.cycle_start_date && debt.cycle_end_date) {
-    // Cycle end is exclusive: the window runs through the end of
-    // cycle_end_date, so the exclusive boundary is the day after it.
-    startInstant = bangkokDateStartInstant(debt.cycle_start_date);
-    endExclusiveInstant = bangkokDateStartInstant(addOneDay(debt.cycle_end_date));
-  } else {
-    const todayKey = getBangkokTodayString();
-    const [y, m] = todayKey.split('-').map(Number);
-    const start = `${todayKey.slice(0, 7)}-01`;
-    const end = `${y}-${String(m).padStart(2, '0')}-${String(daysInMonth(y, m)).padStart(2, '0')}`;
-    startInstant = bangkokDateStartInstant(start);
-    endExclusiveInstant = bangkokDateStartInstant(addOneDay(end));
-  }
-
-  const { data: rows, error: sumError } = await supabase
-    .from('transactions')
-    .select('amount_satang')
-    .eq('debt_id', debtId)
-    .eq('type', 'debt_payment')
-    .eq('status', 'confirmed')
-    .gte('occurred_at', startInstant)
-    .lt('occurred_at', endExclusiveInstant);
-  if (sumError) throw new Error('คำนวณยอดจ่ายรอบนี้ไม่สำเร็จ');
-
-  const total = (rows ?? []).reduce((sum, row) => sum + Number(row.amount_satang), 0);
-  const { error: updateError } = await supabase.from('debts').update({ amount_paid_this_cycle_satang: total }).eq('id', debtId);
-  if (updateError) throw new Error('บันทึกยอดจ่ายรอบนี้ไม่สำเร็จ');
-}
-
-export function addOneDay(dateKey: string): string {
-  const [y, m, d] = dateKey.split('-').map(Number);
-  const next = new Date(Date.UTC(y, m - 1, d + 1));
-  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`;
-}
-
-export interface CycleAdvancePreview {
-  previousDueDate: string | null;
-  nextDueDate: string;
-}
-
-export function previewCycleAdvance(debt: Debt): CycleAdvancePreview | null {
-  if (!debt.dueDate) return null;
-  return { previousDueDate: debt.dueDate, nextDueDate: nextDueDate(debt.dueDate, debt.recurringDueDay) };
-}
-
-/** Advances due_date (and cycle_start_date/cycle_end_date, if the debt has explicit ones) by one month, then recomputes amount_paid_this_cycle_satang for the new window. Never touches outstanding_balance_satang. */
-export async function advanceDebtCycle(debt: Debt): Promise<void> {
-  if (!debt.dueDate) throw new Error('หนี้นี้ยังไม่มีวันครบกำหนด');
-  const patch: Record<string, string> = { due_date: nextDueDate(debt.dueDate, debt.recurringDueDay) };
-  if (debt.cycleStartDate && debt.cycleEndDate) {
-    patch.cycle_start_date = shiftDateKeyByOneMonth(debt.cycleStartDate);
-    patch.cycle_end_date = shiftDateKeyByOneMonth(debt.cycleEndDate);
-  }
-  const { error } = await supabase.from('debts').update(patch).eq('id', debt.id);
-  if (error) throw new Error('เริ่มรอบใหม่ไม่สำเร็จ');
-  await recalculateAmountPaidThisCycle(debt.id);
 }
