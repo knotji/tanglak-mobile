@@ -40,7 +40,7 @@ const CATEGORY_ID_LIST = [...EXPENSE_CATEGORY_IDS, ...INCOME_CATEGORY_IDS]
 
 const EXTRACTION_SYSTEM_PROMPT = `
 You are an expert AI financial document parser for the TangLak (ตั้งหลัก) application.
-Analyze the provided image or PDF document and extract the relevant fields into a single structured JSON object conforming exactly to the requested schema.
+Analyze the provided image(s) and extract the relevant fields into a single structured JSON object conforming exactly to the requested schema.
 
 CRITICAL RULES:
 1. Return STRICT JSON only. Do not wrap in markdown blocks like \`\`\`json or add conversational text. Start with { and end with }.
@@ -51,6 +51,7 @@ CRITICAL RULES:
 6. The "documentType" field must be one of: "salary_slip", "transfer_slip", "receipt", "delivery_receipt", "debt_statement", "other".
 7. For "transaction.occurredAt": report the date/time exactly as printed on the document (e.g. "11 Jul 26 07:26 +0700", "11 July 2026", "2026-07-11T07:26:00+07:00"). Do NOT perform date/timezone conversion or arithmetic yourself. If you are not confident about the exact characters printed, omit the field and add "transaction.occurredAt" to "unclearFields" rather than guessing.
 8. For "transaction.categoryId": choose exactly one id from this fixed list -- never invent a new id or use a label instead of an id: ${CATEGORY_ID_LIST}. Also set "transaction.categoryConfidence" (0 to 1) and a short "transaction.categoryReason". If nothing gives any signal, use "other" (or "other_income" for income) rather than guessing.
+9. You may be given MULTIPLE images representing consecutive pages of the SAME document (e.g. a multi-page credit-bureau report). Treat them as one document and combine information across all pages into a single result -- for example, the account holder's name might be on page 1 (a cover/summary page) while the actual outstanding balance, minimum payment, and due date for a specific trade line are in a table on page 2 or later. Do not report only what's on the first page if a later page has the actual figures. If a report lists multiple separate credit accounts/trade lines, extract the one with the largest outstanding balance (the one most useful to plan around) and note in a warning that other accounts exist and were not extracted.
 
 EXTRACTION SCHEMES BY DOCUMENT TYPE:
 - "salary_slip": under "salary": employer, payPeriod, grossIncome, netIncome, tax, socialSecurity, deductions (array of {label, amount}). Under "transaction": type "income", amount = netIncome, occurredAt = payment date, merchant = employer.
@@ -275,17 +276,35 @@ Deno.serve(async (request) => {
     if (!apiKey) return json({ error: 'Document Extraction Is Not Configured' }, 503);
 
     const body = await request.json();
-    const imageDataUrl = typeof body.imageDataUrl === 'string' ? body.imageDataUrl : null;
-    const match = imageDataUrl?.match(/^data:(image\/[a-zA-Z0-9.+-]+|application\/pdf);base64,(.+)$/);
-    if (!match) return json({ error: 'A Valid Document Image Is Required' }, 400);
-    const [, mimeType, base64] = match;
+    // imageDataUrls (plural) is the current shape -- one data URL per PDF
+    // page, or a single-element array for a plain photo. imageDataUrl
+    // (singular) is accepted as a fallback for any client build still
+    // sending the old single-image shape.
+    const rawUrls: unknown = Array.isArray(body.imageDataUrls)
+      ? body.imageDataUrls
+      : typeof body.imageDataUrl === 'string' ? [body.imageDataUrl] : [];
+    const DATA_URL_PATTERN = /^data:(image\/[a-zA-Z0-9.+-]+|application\/pdf);base64,(.+)$/;
+    const images = (rawUrls as unknown[])
+      .filter((u): u is string => typeof u === 'string')
+      .map((u) => u.match(DATA_URL_PATTERN))
+      .filter((m): m is RegExpMatchArray => m !== null)
+      .map((m) => ({ mimeType: m[1], base64: m[2] }));
+    if (images.length === 0) return json({ error: 'A Valid Document Image Is Required' }, 400);
 
     const model = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.1-flash-lite';
+    const introText = images.length > 1
+      ? `Here is the document to extract, as ${images.length} consecutive pages. Combine information across all pages into a single result (e.g. account/requester info on one page, a balance or account table on another).`
+      : 'Here is the document to extract.';
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: 'Here is the document to extract.' }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
+        contents: [{
+          parts: [
+            { text: introText },
+            ...images.map((img) => ({ inline_data: { mime_type: img.mimeType, data: img.base64 } })),
+          ],
+        }],
         systemInstruction: { parts: [{ text: EXTRACTION_SYSTEM_PROMPT }] },
         generationConfig: { response_mime_type: 'application/json' },
       }),
