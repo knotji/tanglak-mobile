@@ -163,19 +163,72 @@ function normalizeParsedTimestamp(parsedJson: unknown): unknown {
   return parsedJson;
 }
 
+// --- Defensive coercion for common Gemini JSON-mode quirks, applied before
+// Zod validation. Gemini's structured output is usually clean but reliably
+// drifts from the requested schema in a few specific ways on real-world
+// documents (dense official reports especially, e.g. NCB credit-bureau
+// statements): money amounts occasionally come back as locale-formatted
+// strings ("15,000.00") instead of numbers, "I don't know" is sometimes
+// expressed as an explicit `null` rather than omitting the key (which
+// z.optional() doesn't accept -- only `undefined` satisfies "absent"), and
+// confidence scores sometimes come back as a 0-100 percentage instead of
+// the requested 0-1 fraction. None of these are malformed JSON or a wrong
+// field name (Zod would still reject those, correctly) -- they're just
+// off-schema encodings of otherwise-correct data, worth normalizing rather
+// than discarding.
+
+/** Recursively replaces every `null` with `undefined` so it satisfies z.optional() fields instead of failing them -- Gemini uses `null` for "I don't know" fairly often even when the prompt says to omit the key instead. */
+function deepNullToUndefined(value: unknown): unknown {
+  if (value === null) return undefined;
+  if (Array.isArray(value)) return value.map(deepNullToUndefined);
+  if (typeof value === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) result[key] = deepNullToUndefined(val);
+    return result;
+  }
+  return value;
+}
+
+/** Accepts a number as-is; for a string, strips currency symbols/thousands separators (e.g. "฿15,000.00" -> 15000) before parsing. Falls through unchanged if it doesn't look numeric at all, so Zod still reports a clear error for genuinely wrong data. */
+const moneyLike = () => z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  const cleaned = value.replace(/[^\d.-]/g, '');
+  if (cleaned === '' || cleaned === '-') return value;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : value;
+}, z.number().nonnegative().optional());
+
+/** Same string-to-number coercion as moneyLike, for a plain count (e.g. line-item quantity, remaining installments) -- takes the specific numeric constraint (int/positive/nonnegative) as a parameter since those differ per field. */
+const countLike = (schema: z.ZodNumber) => z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  const cleaned = value.replace(/[^\d-]/g, '');
+  if (cleaned === '' || cleaned === '-') return value;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : value;
+}, schema.optional());
+
+/** Same string-cleanup as moneyLike, but also folds an apparent 0-100 percentage down to 0-1 (Gemini sometimes returns confidence as "85" meaning 85%, despite the prompt asking for a 0-1 fraction). */
+const confidenceLike = () => z.preprocess((value) => {
+  let n: number | undefined;
+  if (typeof value === 'number') n = value;
+  else if (typeof value === 'string') { const parsed = Number(value.replace(/[^\d.-]/g, '')); n = Number.isFinite(parsed) ? parsed : undefined; }
+  if (n === undefined) return value;
+  return n > 1 ? n / 100 : n;
+}, z.number().min(0).max(1).optional());
+
 // --- Schema (ported from tanglak/src/lib/ai/schemas.ts) ---
 const extractedFinancialDocumentSchema = z.object({
   documentType: z.enum(['salary_slip', 'transfer_slip', 'receipt', 'delivery_receipt', 'debt_statement', 'loan_schedule', 'other']),
-  confidence: z.number().min(0).max(1).default(0),
+  confidence: confidenceLike().default(0),
   transaction: z.object({
     type: z.enum(['income', 'expense', 'debt_payment', 'transfer', 'refund']).optional(),
-    amount: z.number().nonnegative().optional(),
+    amount: moneyLike(),
     currency: z.string().optional(),
     occurredAt: z.string().optional(),
     merchant: z.string().optional(),
     category: z.string().optional(),
     categoryId: z.string().optional(),
-    categoryConfidence: z.number().min(0).max(1).optional(),
+    categoryConfidence: confidenceLike(),
     categoryReason: z.string().optional(),
     alternativeCategoryId: z.string().optional(),
     paymentMethod: z.string().optional(),
@@ -187,21 +240,21 @@ const extractedFinancialDocumentSchema = z.object({
     possibleOwnAccountTransfer: z.boolean().optional(),
   }).optional(),
   salary: z.object({
-    employer: z.string().optional(), payPeriod: z.string().optional(), grossIncome: z.number().nonnegative().optional(),
-    netIncome: z.number().nonnegative().optional(), tax: z.number().nonnegative().optional(), socialSecurity: z.number().nonnegative().optional(),
-    deductions: z.array(z.object({ label: z.string(), amount: z.number().nonnegative() })).optional(),
+    employer: z.string().optional(), payPeriod: z.string().optional(), grossIncome: moneyLike(),
+    netIncome: moneyLike(), tax: moneyLike(), socialSecurity: moneyLike(),
+    deductions: z.array(z.object({ label: z.string(), amount: moneyLike() })).optional(),
   }).optional(),
   receipt: z.object({
-    subtotal: z.number().nonnegative().optional(), deliveryFee: z.number().nonnegative().optional(), serviceFee: z.number().nonnegative().optional(),
-    discount: z.number().nonnegative().optional(), totalPaid: z.number().nonnegative().optional(),
-    items: z.array(z.object({ name: z.string(), quantity: z.number().positive().optional(), amount: z.number().nonnegative().optional() })).optional(),
+    subtotal: moneyLike(), deliveryFee: moneyLike(), serviceFee: moneyLike(),
+    discount: moneyLike(), totalPaid: moneyLike(),
+    items: z.array(z.object({ name: z.string(), quantity: countLike(z.number().positive()), amount: moneyLike() })).optional(),
   }).optional(),
   debt: z.object({
     creditor: z.string().optional(), debtName: z.string().optional(),
     debtType: z.enum(['credit_card', 'personal_loan', 'installment', 'mortgage', 'auto_loan', 'buy_now_pay_later', 'informal_loan', 'other']).optional(),
-    outstandingBalance: z.number().nonnegative().optional(), statementBalance: z.number().nonnegative().optional(), amountDue: z.number().nonnegative().optional(),
-    minimumPayment: z.number().nonnegative().optional(), dueDate: z.string().optional(), interestRateAnnual: z.number().nonnegative().optional(),
-    remainingInstallments: z.number().int().nonnegative().optional(), accountLastFour: z.string().optional(),
+    outstandingBalance: moneyLike(), statementBalance: moneyLike(), amountDue: moneyLike(),
+    minimumPayment: moneyLike(), dueDate: z.string().optional(), interestRateAnnual: moneyLike(),
+    remainingInstallments: countLike(z.number().int().nonnegative()), accountLastFour: z.string().optional(),
   }).optional(),
   warnings: z.array(z.string()).default([]),
   unclearFields: z.array(z.string()).default([]),
@@ -237,21 +290,37 @@ Deno.serve(async (request) => {
         generationConfig: { response_mime_type: 'application/json' },
       }),
     });
-    if (!response.ok) return json({ error: 'Document Extraction Failed' }, 502);
+    if (!response.ok) {
+      console.error('[extract-document] Gemini API error', response.status, await response.text().catch(() => '<unreadable body>'));
+      return json({ error: 'Document Extraction Failed' }, 502);
+    }
 
     const result = await response.json();
     const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (typeof text !== 'string') return json({ error: 'Document Extraction Returned No Result' }, 502);
+    if (typeof text !== 'string') {
+      console.error('[extract-document] no text in Gemini response', JSON.stringify(result).slice(0, 2000));
+      return json({ error: 'Document Extraction Returned No Result' }, 502);
+    }
 
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(text.trim());
     } catch {
+      console.error('[extract-document] Gemini did not return valid JSON', text.slice(0, 2000));
       return json({ error: 'Document Extraction Returned Invalid JSON' }, 502);
     }
 
-    const parseResult = extractedFinancialDocumentSchema.safeParse(normalizeParsedTimestamp(parsedJson));
-    if (!parseResult.success) return json({ error: 'Document Extraction Result Did Not Match Expected Shape' }, 502);
+    // See the coercion helpers above (deepNullToUndefined, moneyLike,
+    // confidenceLike) -- normalizes the handful of ways Gemini's structured
+    // output reliably drifts from the requested schema before validating.
+    const parseResult = extractedFinancialDocumentSchema.safeParse(normalizeParsedTimestamp(deepNullToUndefined(parsedJson)));
+    if (!parseResult.success) {
+      // Logged (not returned to the client) so a real failure is
+      // diagnosable from the Supabase dashboard's function logs instead of
+      // being a total black box -- this was previously swallowed entirely.
+      console.error('[extract-document] schema validation failed', JSON.stringify(parseResult.error.issues), 'raw:', JSON.stringify(parsedJson).slice(0, 2000));
+      return json({ error: 'Document Extraction Result Did Not Match Expected Shape' }, 502);
+    }
 
     return json({ data: parseResult.data });
   } catch (error) {
