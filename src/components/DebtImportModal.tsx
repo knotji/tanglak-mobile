@@ -7,10 +7,10 @@ import {
   IonSpinner,
   IonText,
 } from '@ionic/react';
-import { cloudUploadOutline, documentTextOutline, checkmarkCircleOutline, sparklesOutline } from 'ionicons/icons';
+import { cloudUploadOutline, documentTextOutline, checkmarkCircleOutline, sparklesOutline, lockClosedOutline } from 'ionicons/icons';
 import FieldLabel from '@/components/FieldLabel';
 import DateField from '@/components/DateField';
-import { extractDocument, type ExtractedDebt } from '@/lib/documentUpload';
+import { extractDocument, PdfPasswordError, type ExtractedDebt } from '@/lib/documentUpload';
 import { createDebt, type DebtFormInput } from '@/lib/debts';
 
 interface DebtImportModalProps {
@@ -33,29 +33,27 @@ const EMPTY_FORM: DebtFormInput = {
 };
 
 export const DebtImportModal: React.FC<DebtImportModalProps> = ({ isOpen, onClose, onDebtImported }) => {
-  const [step, setStep] = useState<'pick' | 'extracting' | 'review' | 'saving' | 'saved'>('pick');
+  const [step, setStep] = useState<'pick' | 'password' | 'extracting' | 'review' | 'saving' | 'saved'>('pick');
   const [form, setForm] = useState<DebtFormInput>(EMPTY_FORM);
   const [error, setError] = useState('');
   const [fileName, setFileName] = useState('');
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [password, setPassword] = useState('');
 
   const handleReset = () => {
     setStep('pick');
     setForm(EMPTY_FORM);
     setError('');
     setFileName('');
+    setPendingFile(null);
+    setPassword('');
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    setFileName(file.name);
+  const runExtraction = async (file: File, filePassword?: string) => {
     setError('');
     setStep('extracting');
-
     try {
-      const extracted = await extractDocument(file);
+      const extracted = await extractDocument(file, filePassword);
       const debtData: ExtractedDebt = extracted.debt ?? {};
       const txData = extracted.transaction;
 
@@ -80,11 +78,37 @@ export const DebtImportModal: React.FC<DebtImportModalProps> = ({ isOpen, onClos
         interestRateAnnual,
         notes: `นำเข้าจากเอกสาร ${file.name}`,
       });
+      setPendingFile(null);
       setStep('review');
     } catch (cause) {
+      if (cause instanceof PdfPasswordError) {
+        // "need_password" (first attempt, no password given) and
+        // "incorrect_password" (a password was already tried) both land on
+        // the same password step -- only the inline error message differs,
+        // so a wrong guess doesn't force the user to re-pick the file.
+        setPendingFile(file);
+        setError(cause.reason === 'incorrect_password' ? cause.message : '');
+        setStep('password');
+        return;
+      }
       setError(cause instanceof Error ? cause.message : 'อ่านข้อมูลหนี้จากไฟล์ไม่สำเร็จ');
       setStep('pick');
     }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setFileName(file.name);
+    setPassword('');
+    await runExtraction(file);
+  };
+
+  const handlePasswordSubmit = async () => {
+    if (!pendingFile || !password) return;
+    await runExtraction(pendingFile, password);
   };
 
   const handleSave = async () => {
@@ -182,6 +206,61 @@ export const DebtImportModal: React.FC<DebtImportModalProps> = ({ isOpen, onClos
               AI กำลังสกัดยอดหนี้ ยอดขั้นต่ำ ดอกเบี้ย และวันครบกำหนด
             </p>
           </div>
+        )}
+
+        {step === 'password' && (
+          <>
+            <div style={{ textAlign: 'center', marginBottom: 18 }}>
+              <div
+                style={{
+                  width: 52, height: 52, borderRadius: 18,
+                  background: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)',
+                  color: '#9a3412',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 10,
+                }}
+              >
+                <IonIcon icon={lockClosedOutline} style={{ fontSize: 26 }} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a' }}>ไฟล์นี้มีรหัสผ่าน</h3>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--tl-text-secondary)', lineHeight: 1.4 }}>
+                กรอกรหัสผ่านของไฟล์ {fileName} เพื่อปลดล็อกและอ่านข้อมูล
+              </p>
+            </div>
+
+            <FieldLabel>รหัสผ่านไฟล์</FieldLabel>
+            <IonInput
+              fill="outline"
+              type="password"
+              inputmode="text"
+              placeholder="เช่น เลขบัตรประชาชน หรือวันเกิด"
+              value={password}
+              onIonInput={(e) => setPassword(e.detail.value ?? '')}
+              onKeyDown={(e) => { if (e.key === 'Enter' && password) void handlePasswordSubmit(); }}
+            />
+
+            {error && <IonText color="danger"><p style={{ marginTop: 8, fontSize: 13, textAlign: 'center', fontWeight: 600 }}>{error}</p></IonText>}
+
+            <IonButton
+              expand="block"
+              disabled={!password}
+              onClick={() => void handlePasswordSubmit()}
+              style={{
+                marginTop: 14,
+                '--border-radius': '999px',
+                '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)',
+                fontWeight: 700,
+                fontSize: 15,
+                minHeight: 50,
+              }}
+            >
+              ปลดล็อกและอ่านไฟล์
+            </IonButton>
+
+            <IonButton expand="block" fill="clear" onClick={handleReset} style={{ marginTop: 4, fontWeight: 600, color: '#64748b' }}>
+              เลือกไฟล์อื่น
+            </IonButton>
+          </>
         )}
 
         {(step === 'review' || step === 'saving') && (
