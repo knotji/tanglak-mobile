@@ -20,6 +20,7 @@
 //     write a debt_payment transaction, and debt_id is required input.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { recalculateDebtPaidThisCycle } from '../_shared/debtCycle.ts';
+import { writeDebtPaymentWithCompensation } from '../_shared/compensatingWrites.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,45 +84,59 @@ Deno.serve(async (request) => {
       .maybeSingle();
     if (debtError || !debt) return json({ error: 'ไม่พบหนี้ที่เลือก' }, 404);
 
-    const { data: transaction, error: txError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: user.id,
-        type: 'debt_payment',
-        status: 'confirmed',
-        amount_satang: amountSatang,
-        currency: 'THB',
-        occurred_at: paidAtIso,
-        merchant: `ชำระ ${debt.name}`,
-        debt_id: debtId,
-        source: 'manual',
-      })
-      .select('id')
-      .single();
-    if (txError || !transaction) {
-      console.error('[add-debt-payment] transaction insert failed', txError?.message);
-      return json({ error: 'บันทึกการจ่ายหนี้ไม่สำเร็จ' }, 500);
-    }
-
-    const { error: paymentError } = await supabase.from('debt_payments').insert({
-      user_id: user.id,
-      debt_id: debtId,
-      transaction_id: transaction.id,
-      amount_satang: amountSatang,
-      paid_at: paidAtIso,
+    const transactionId = await writeDebtPaymentWithCompensation({
+      insertTransaction: async () => {
+        const { data: transaction, error } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: user.id,
+            type: 'debt_payment',
+            status: 'confirmed',
+            amount_satang: amountSatang,
+            currency: 'THB',
+            occurred_at: paidAtIso,
+            merchant: `ชำระ ${debt.name}`,
+            debt_id: debtId,
+            source: 'manual',
+          })
+          .select('id')
+          .single();
+        if (error || !transaction) throw error ?? new Error('Transaction insert returned no row');
+        return transaction.id;
+      },
+      insertPayment: async (createdTransactionId) => {
+        const { error } = await supabase.from('debt_payments').insert({
+          user_id: user.id,
+          debt_id: debtId,
+          transaction_id: createdTransactionId,
+          amount_satang: amountSatang,
+          paid_at: paidAtIso,
+        });
+        if (error) throw error;
+      },
+      recalculate: async () => {
+        const { error } = await recalculateDebtPaidThisCycle(supabase, user.id, debtId);
+        if (error) throw error;
+      },
+      deletePayment: async (createdTransactionId) => {
+        const { error } = await supabase
+          .from('debt_payments')
+          .delete()
+          .eq('transaction_id', createdTransactionId)
+          .eq('user_id', user.id);
+        if (error) throw error;
+      },
+      deleteTransaction: async (createdTransactionId) => {
+        const { error } = await supabase
+          .from('transactions')
+          .delete()
+          .eq('id', createdTransactionId)
+          .eq('user_id', user.id);
+        if (error) throw error;
+      },
     });
-    if (paymentError) {
-      console.error('[add-debt-payment] debt_payments insert failed', paymentError.message);
-      return json({ error: 'บันทึกการจ่ายหนี้ไม่สำเร็จ' }, 500);
-    }
 
-    const { error: recalcError } = await recalculateDebtPaidThisCycle(supabase, user.id, debtId);
-    if (recalcError) {
-      console.error('[add-debt-payment] recalc failed', recalcError);
-      return json({ error: 'บันทึกการจ่ายหนี้ไม่สำเร็จ' }, 500);
-    }
-
-    return json({ data: { transactionId: transaction.id } });
+    return json({ data: { transactionId } });
   } catch (error) {
     console.error('[add-debt-payment]', error);
     return json({ error: 'บันทึกการจ่ายหนี้ไม่สำเร็จ' }, 500);

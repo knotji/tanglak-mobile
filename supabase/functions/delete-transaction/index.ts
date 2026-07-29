@@ -9,6 +9,10 @@
 // recalculate only if the deleted row had one.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { recalculateDebtPaidThisCycle } from '../_shared/debtCycle.ts';
+import {
+  deleteTransactionWithCompensation,
+  type TransactionDeleteSnapshot,
+} from '../_shared/compensatingWrites.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,7 +34,7 @@ Deno.serve(async (request) => {
 
     const { data: existing, error: readError } = await supabase
       .from('transactions')
-      .select('debt_id')
+      .select('*')
       .eq('id', id)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -40,16 +44,55 @@ Deno.serve(async (request) => {
     }
     if (!existing) return json({ error: 'ไม่พบรายการนี้' }, 404);
 
-    const { error: deleteError } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id);
-    if (deleteError) {
-      console.error('[delete-transaction] delete failed', deleteError.message);
+    const { data: payment, error: paymentReadError } = await supabase
+      .from('debt_payments')
+      .select('*')
+      .eq('transaction_id', id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (paymentReadError) {
+      console.error('[delete-transaction] linked payment read failed', paymentReadError.message);
       return json({ error: 'ลบรายการไม่สำเร็จ' }, 500);
     }
 
-    if (existing.debt_id) {
-      const { error: recalcError } = await recalculateDebtPaidThisCycle(supabase, user.id, existing.debt_id);
-      if (recalcError) console.error('[delete-transaction] recalc failed', recalcError);
-    }
+    const snapshot: TransactionDeleteSnapshot = {
+      transaction: existing,
+      payment,
+      debtId: existing.debt_id,
+    };
+
+    await deleteTransactionWithCompensation(snapshot, {
+      deletePayment: async ({ payment: linkedPayment }) => {
+        if (!linkedPayment) return;
+        const { error } = await supabase
+          .from('debt_payments')
+          .delete()
+          .eq('id', linkedPayment.id)
+          .eq('user_id', user.id);
+        if (error) throw error;
+      },
+      deleteTransaction: async () => {
+        const { error } = await supabase
+          .from('transactions')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', user.id);
+        if (error) throw error;
+      },
+      recalculate: async (debtId) => {
+        const { error } = await recalculateDebtPaidThisCycle(supabase, user.id, debtId);
+        if (error) throw error;
+      },
+      restoreTransaction: async ({ transaction }) => {
+        const { error } = await supabase.from('transactions').insert(transaction);
+        if (error) throw error;
+      },
+      restorePayment: async ({ payment: linkedPayment }) => {
+        if (!linkedPayment) return;
+        const { error } = await supabase.from('debt_payments').insert(linkedPayment);
+        if (error) throw error;
+      },
+    });
 
     return json({ data: { ok: true } });
   } catch (error) {
