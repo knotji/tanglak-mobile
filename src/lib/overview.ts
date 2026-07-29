@@ -6,8 +6,8 @@ import type { Transaction } from '@/lib/transactions';
 // calculateCashRemaining) and src/app/overview/page.tsx's data assembly.
 export interface MonthlyTotals {
   incomeSatang: number;
-  livingExpenseSatang: number;
-  debtPaymentSatang: number;
+  /** Includes historical debt_payment rows so removing the debt feature does not rewrite past cash flow. */
+  expenseSatang: number;
   refundSatang: number;
 }
 
@@ -16,9 +16,6 @@ export interface OverviewSnapshot {
   /** Saved planned income for the month (same source as Budget), not the sum of income transactions -- see calculateCashRemaining in the web app. */
   plannedIncomeSatang: number;
   cashRemainingSatang: number;
-  totalOutstandingSatang: number;
-  totalMinimumDueSatang: number;
-  debtCount: number;
 }
 
 async function getPlannedIncomeSatang(month: string): Promise<number> {
@@ -28,11 +25,10 @@ async function getPlannedIncomeSatang(month: string): Promise<number> {
 }
 
 function summarizeMonthlyTotals(transactions: Pick<Transaction, 'type' | 'amountSatang'>[]): MonthlyTotals {
-  const totals: MonthlyTotals = { incomeSatang: 0, livingExpenseSatang: 0, debtPaymentSatang: 0, refundSatang: 0 };
+  const totals: MonthlyTotals = { incomeSatang: 0, expenseSatang: 0, refundSatang: 0 };
   for (const tx of transactions) {
     if (tx.type === 'income') totals.incomeSatang += tx.amountSatang;
-    else if (tx.type === 'expense') totals.livingExpenseSatang += tx.amountSatang;
-    else if (tx.type === 'debt_payment') totals.debtPaymentSatang += tx.amountSatang;
+    else if (tx.type === 'expense' || tx.type === 'debt_payment') totals.expenseSatang += tx.amountSatang;
     else if (tx.type === 'refund') totals.refundSatang += tx.amountSatang;
   }
   return totals;
@@ -68,14 +64,11 @@ export async function getOverviewSnapshot(
     getPlannedIncomeSatang(month),
   ]);
 
-  const cashRemainingSatang = plannedIncomeSatang + totals.refundSatang - totals.livingExpenseSatang - totals.debtPaymentSatang;
+  const cashRemainingSatang = plannedIncomeSatang + totals.refundSatang - totals.expenseSatang;
 
   return {
     totals,
     plannedIncomeSatang,
     cashRemainingSatang,
-    totalOutstandingSatang: 0,
-    totalMinimumDueSatang: 0,
-    debtCount: 0,
   };
 }

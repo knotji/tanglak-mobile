@@ -1,7 +1,4 @@
 import { supabase } from '@/lib/supabaseClient';
-import { PdfPasswordError } from '@/lib/pdfPasswordError';
-
-export { PdfPasswordError };
 
 export interface ExtractedTransaction {
   type?: 'income' | 'expense' | 'debt_payment' | 'transfer' | 'refund';
@@ -19,25 +16,10 @@ export interface ExtractedTransaction {
   memo?: string;
 }
 
-export interface ExtractedDebt {
-  creditor?: string;
-  debtName?: string;
-  debtType?: 'credit_card' | 'personal_loan' | 'installment' | 'mortgage' | 'auto_loan' | 'buy_now_pay_later' | 'informal_loan' | 'other';
-  outstandingBalance?: number;
-  statementBalance?: number;
-  amountDue?: number;
-  minimumPayment?: number;
-  dueDate?: string;
-  interestRateAnnual?: number;
-  remainingInstallments?: number;
-  accountLastFour?: string;
-}
-
 export interface ExtractedFinancialDocument {
-  documentType: 'salary_slip' | 'transfer_slip' | 'receipt' | 'delivery_receipt' | 'debt_statement' | 'loan_schedule' | 'other';
+  documentType: 'salary_slip' | 'transfer_slip' | 'receipt' | 'delivery_receipt' | 'other';
   confidence: number;
   transaction?: ExtractedTransaction;
-  debt?: ExtractedDebt;
   warnings: string[];
   unclearFields: string[];
   requiresReview: true;
@@ -73,42 +55,10 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-const MAX_COMBINED_PAYLOAD_CHARS = 15_000_000;
-
-/**
- * `password` is only used for PDF files -- ignored for images. A PDF is
- * always rendered to JPEG images on-device first (via pdfjs-dist, up to
- * several pages -- see pdfDecrypt.ts) rather than forwarded to Gemini as
- * raw PDF bytes: this both lets a password-protected PDF be decrypted
- * client-side (Gemini has no way to open an encrypted PDF at all) and lets
- * information spread across pages (e.g. a cover/requester-info page
- * followed by the actual account/balance table, typical of an NCB
- * credit-bureau report) be combined into one extraction, the same way
- * Gemini already combines fields from a single multi-field slip. Throws
- * PdfPasswordError (re-exported from pdfPasswordError.ts) when the PDF
- * needs a password that wasn't given, or the given one was wrong --
- * callers should catch that specifically to prompt for a password rather
- * than showing a generic extraction-failed error.
- *
- * pdfDecrypt.ts (and the sizeable pdfjs-dist library it pulls in) is
- * dynamically imported here, only on the PDF branch -- it must never end
- * up in the eagerly-loaded MainTabs bundle just because this file is
- * statically imported by both UploadPage (images only, never triggers
- * this branch) and DebtImportModal (does).
- */
-export async function extractDocument(file: File, password?: string): Promise<ExtractedFinancialDocument> {
+export async function extractDocument(file: File): Promise<ExtractedFinancialDocument> {
   const isImage = file.type.startsWith('image/');
-  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-  if (!isImage && !isPdf) throw new Error('เลือกไฟล์รูปภาพหรือไฟล์ PDF เท่านั้น');
-  // A PDF renders to one data URL per page (up to pdfDecrypt's own page
-  // cap) -- a single image always sends its one page as a 1-element array,
-  // so the Edge Function has one request shape to handle regardless of
-  // source type.
-  const imageDataUrls = isPdf
-    ? await (await import('@/lib/pdfDecrypt')).renderPdfPagesToJpeg(file, password)
-    : [await prepareDocumentImage(file)];
-  const totalChars = imageDataUrls.reduce((sum, url) => sum + url.length, 0);
-  if (totalChars > MAX_COMBINED_PAYLOAD_CHARS) throw new Error('ไฟล์นี้ใหญ่เกินไป กรุณาเลือกไฟล์ที่เล็กลง หรือมีจำนวนหน้าน้อยกว่านี้');
+  if (!isImage) throw new Error('เลือกไฟล์รูปภาพเท่านั้น');
+  const imageDataUrls = [await prepareDocumentImage(file)];
   const { data, error } = await supabase.functions.invoke('extract-document', { body: { imageDataUrls } });
   if (error) throw new Error('การอ่านเอกสารล้มเหลว กรุณาลองใหม่');
   if (!data?.data) throw new Error(data?.error ?? 'ไม่สามารถอ่านข้อมูลจากเอกสารนี้ได้');

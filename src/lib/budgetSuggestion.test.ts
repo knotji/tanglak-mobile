@@ -94,14 +94,13 @@ describe('suggestBudgetFromIncomeRatio', () => {
   const labelFor = (id: string) => `label:${id}`;
 
   it('flags insufficient data when income is zero or negative', () => {
-    expect(suggestBudgetFromIncomeRatio(0, 0, labelFor).insufficientData).toBe(true);
-    expect(suggestBudgetFromIncomeRatio(-100_00, 0, labelFor).insufficientData).toBe(true);
+    expect(suggestBudgetFromIncomeRatio(0, labelFor).insufficientData).toBe(true);
+    expect(suggestBudgetFromIncomeRatio(-100_00, labelFor).insufficientData).toBe(true);
   });
 
-  it('splits income into needs/wants pools without a real debt figure', () => {
-    const result = suggestBudgetFromIncomeRatio(30000_00, 0, labelFor);
+  it('splits income into needs/wants pools', () => {
+    const result = suggestBudgetFromIncomeRatio(30000_00, labelFor);
     expect(result.insufficientData).toBe(false);
-    expect(result.debtSuggestion).toBeNull();
     expect(result.needs.length).toBeGreaterThan(0);
     expect(result.wants.length).toBeGreaterThan(0);
 
@@ -113,24 +112,15 @@ describe('suggestBudgetFromIncomeRatio', () => {
     }
   });
 
-  it('sizes the debt category from the real minimum-due total, not a generic ratio', () => {
-    const result = suggestBudgetFromIncomeRatio(30000_00, 4321_00, labelFor);
-    expect(result.debtSuggestion).not.toBeNull();
-    // Rounded up to the nearest 50 baht.
-    expect(result.debtSuggestion?.suggestedSatang).toBe(4350_00);
-    expect(result.debtSuggestion?.categoryId).toBe('debt');
-  });
-
   it('uses the provided label lookup for every suggested category', () => {
-    const result = suggestBudgetFromIncomeRatio(30000_00, 1000_00, labelFor);
+    const result = suggestBudgetFromIncomeRatio(30000_00, labelFor);
     for (const item of [...result.needs, ...result.wants]) {
       expect(item.label).toBe(labelFor(item.categoryId));
     }
-    expect(result.debtSuggestion?.label).toBe(labelFor('debt'));
   });
 
   it('sorts each pool by suggested amount, highest first', () => {
-    const result = suggestBudgetFromIncomeRatio(30000_00, 0, labelFor);
+    const result = suggestBudgetFromIncomeRatio(30000_00, labelFor);
     const isSorted = (items: { suggestedSatang: number }[]) => items.every((item, i) => i === 0 || items[i - 1].suggestedSatang >= item.suggestedSatang);
     expect(isSorted(result.needs)).toBe(true);
     expect(isSorted(result.wants)).toBe(true);

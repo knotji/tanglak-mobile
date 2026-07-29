@@ -148,27 +148,20 @@ export interface RatioCategorySuggestion {
 export interface IncomeRatioSuggestion {
   needs: RatioCategorySuggestion[];
   wants: RatioCategorySuggestion[];
-  /** From the user's real minimum-payment total, not a generic percentage -- see suggestBudgetFromIncomeRatio's own comment. */
-  debtSuggestion: { categoryId: 'debt'; label: string; suggestedSatang: number } | null;
   insufficientData: boolean;
 }
 
 /**
  * Fallback for when suggestBudgetFromHistory has too little real spending
  * history to work from. `incomeSatang` is the user's own planned monthly
- * income (same figure already entered on this page); `totalMinimumDueSatang`
- * is their actual current debt-minimum total from getOverviewSnapshot, used
- * to size the debt category directly from real obligations instead of a
- * generic percentage -- unlike every other category here, debt payments
- * aren't a lifestyle choice to suggest a ratio for.
+ * income (same figure already entered on this page).
  */
 export function suggestBudgetFromIncomeRatio(
   incomeSatang: number,
-  totalMinimumDueSatang: number,
   categoryLabelById: (id: string) => string,
 ): IncomeRatioSuggestion {
   if (incomeSatang <= 0) {
-    return { needs: [], wants: [], debtSuggestion: null, insufficientData: true };
+    return { needs: [], wants: [], insufficientData: true };
   }
 
   const needsPoolSatang = Math.round(incomeSatang * NEEDS_RATIO);
@@ -186,10 +179,6 @@ export function suggestBudgetFromIncomeRatio(
   return {
     needs: toSuggestions(NEEDS_WEIGHTS, needsPoolSatang),
     wants: toSuggestions(WANTS_WEIGHTS, wantsPoolSatang),
-    debtSuggestion:
-      totalMinimumDueSatang > 0
-        ? { categoryId: 'debt', label: categoryLabelById('debt'), suggestedSatang: Math.ceil(totalMinimumDueSatang / ROUND_TO_SATANG) * ROUND_TO_SATANG }
-        : null,
     insufficientData: false,
   };
 }

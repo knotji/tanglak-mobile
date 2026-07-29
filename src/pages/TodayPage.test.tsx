@@ -75,15 +75,11 @@ const transaction: Transaction = {
 const snapshot: OverviewSnapshot = {
   totals: {
     incomeSatang: 0,
-    livingExpenseSatang: 12500,
-    debtPaymentSatang: 0,
+    expenseSatang: 12500,
     refundSatang: 0,
   },
   plannedIncomeSatang: 3000000,
   cashRemainingSatang: 2987500,
-  totalOutstandingSatang: 1000000,
-  totalMinimumDueSatang: 100000,
-  debtCount: 1,
 };
 
 describe('TodayPage loading states', () => {

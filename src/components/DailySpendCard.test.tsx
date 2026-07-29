@@ -16,7 +16,7 @@ const FIXED_NOW = new Date('2026-07-10T08:00:00Z');
 
 describe('DailySpendCard', () => {
   it('shows a neutral setup state instead of a false 100% warning without planned income', () => {
-    const daily = calculateDailySpendLimit(0, 0, 0, 0, FIXED_NOW);
+    const daily = calculateDailySpendLimit(0, 0, 0, FIXED_NOW);
 
     render(<DailySpendCard daily={daily} />);
 
@@ -27,7 +27,7 @@ describe('DailySpendCard', () => {
   });
 
   it('shows the calculated daily budget after planned income is available', () => {
-    const daily = calculateDailySpendLimit(0, 0, 500000, 3000000, FIXED_NOW);
+    const daily = calculateDailySpendLimit(0, 0, 3000000, FIXED_NOW);
 
     render(<DailySpendCard daily={daily} />);
 

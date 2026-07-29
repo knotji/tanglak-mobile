@@ -30,7 +30,6 @@ import {
 } from '@/lib/budget';
 import { listTransactionsForMonth } from '@/lib/transactions';
 import { currentBangkokMonth, shiftBangkokMonth } from '@/lib/bangkokDate';
-import { getOverviewSnapshot } from '@/lib/overview';
 import { suggestBudgetFromHistory, suggestBudgetFromIncomeRatio, type BudgetSuggestion, type IncomeRatioSuggestion } from '@/lib/budgetSuggestion';
 import { CATEGORY_OPTIONS, categoryLabel } from '@/lib/categories';
 import { formatTHB, bahtToSatang } from '@/lib/money';
@@ -170,11 +169,10 @@ const BudgetEditPage: React.FC = () => {
       // personalized AI analysis, just a common budgeting framework
       // applied to this app's category list, clearly labeled as such below).
       const incomeSatang = bahtToSatang(income || '0');
-      const snapshot = await getOverviewSnapshot().catch(() => null);
-      const ratioResult = suggestBudgetFromIncomeRatio(incomeSatang, snapshot?.totalMinimumDueSatang ?? 0, categoryLabel);
+      const ratioResult = suggestBudgetFromIncomeRatio(incomeSatang, categoryLabel);
       setRatioSuggestion(ratioResult);
       if (!ratioResult.insufficientData) {
-        const allRatioItems = [...ratioResult.needs, ...ratioResult.wants, ...(ratioResult.debtSuggestion ? [ratioResult.debtSuggestion] : [])];
+        const allRatioItems = [...ratioResult.needs, ...ratioResult.wants];
         setSelectedLabels(new Set(allRatioItems.filter((item) => !alreadyBudgeted.has(item.label)).map((item) => item.label)));
       }
     } catch (cause) {
@@ -199,7 +197,7 @@ const BudgetEditPage: React.FC = () => {
     const items: { label: string; suggestedSatang: number }[] = suggestion
       ? suggestion.categories
       : ratioSuggestion
-        ? [...ratioSuggestion.needs, ...ratioSuggestion.wants, ...(ratioSuggestion.debtSuggestion ? [ratioSuggestion.debtSuggestion] : [])]
+        ? [...ratioSuggestion.needs, ...ratioSuggestion.wants]
         : [];
     if (items.length === 0) return;
 
@@ -362,23 +360,6 @@ const BudgetEditPage: React.FC = () => {
                 >
                   ยังมีประวัติการใช้จ่ายไม่พอให้วิเคราะห์จริง ({suggestion?.totalTransactionsAnalyzed ?? 0} รายการ) — นี่คือสัดส่วนงบตามหลักการเงินทั่วไป (จำเป็น 50% / อยากได้ 30% ของรายรับ) ไม่ใช่การวิเคราะห์เฉพาะบุคคล ปรับได้ตามจริงหลังใช้งานสักพัก
                 </div>
-
-                {ratioSuggestion.debtSuggestion && (
-                  <>
-                    <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--tl-text-secondary)' }}>หนี้ (จากยอดขั้นต่ำจริง)</p>
-                    <div className="tl-card" style={{ padding: '4px 16px', marginBottom: 14 }}>
-                      <SuggestionRow
-                        label={ratioSuggestion.debtSuggestion.label}
-                        suggestedSatang={ratioSuggestion.debtSuggestion.suggestedSatang}
-                        note={null}
-                        checked={selectedLabels.has(ratioSuggestion.debtSuggestion.label)}
-                        onToggle={(checked) => toggleSuggestionLabel(ratioSuggestion.debtSuggestion!.label, checked)}
-                        alreadyBudgeted={categories.some((c) => c.label === ratioSuggestion.debtSuggestion!.label)}
-                        first
-                      />
-                    </div>
-                  </>
-                )}
 
                 <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--tl-text-secondary)' }}>จำเป็น (50% ของรายรับ)</p>
                 <div className="tl-card" style={{ padding: '4px 16px', marginBottom: 14 }}>

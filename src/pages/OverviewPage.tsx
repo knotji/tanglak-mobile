@@ -3,12 +3,9 @@ import { IonBackButton, IonButtons, IonContent, IonHeader, IonPage, IonSpinner, 
 import PageHeader from '@/components/PageHeader';
 import CategoryDonutChart, { type CategoryDonutItem } from '@/components/CategoryDonutChart';
 import CashFlowBarChart, { type MonthlyCashFlowPoint } from '@/components/CashFlowBarChart';
-import FinancialHealthCard from '@/components/FinancialHealthCard';
 import { getOverviewSnapshot, type OverviewSnapshot } from '@/lib/overview';
 import { listTransactionsForMonth } from '@/lib/transactions';
-import { listDebts, type Debt } from '@/lib/debts';
 import { currentBangkokMonth, shiftBangkokMonth } from '@/lib/bangkokDate';
-import { calculateFinancialHealthScore } from '@/lib/financialHealthScore';
 import { usePrivacyMode, maskAmount } from '@/lib/privacyStore';
 import { formatTHB } from '@/lib/money';
 
@@ -29,12 +26,10 @@ const FlowRow: React.FC<{ label: string; amountSatang: number; direction: 'in' |
 
 const OverviewPage: React.FC = () => {
   const [snapshot, setSnapshot] = useState<OverviewSnapshot | null>(null);
-  const [debts, setDebts] = useState<Debt[]>([]);
   const [donutItems, setDonutItems] = useState<CategoryDonutItem[]>([]);
   const [totalExpenseSatang, setTotalExpenseSatang] = useState(0);
   const [cashFlowHistory, setCashFlowHistory] = useState<MonthlyCashFlowPoint[]>([]);
   const [error, setError] = useState('');
-  const [partialLoadWarning, setPartialLoadWarning] = useState('');
   const isPrivacy = usePrivacyMode();
 
   useIonViewWillEnter(() => {
@@ -47,26 +42,12 @@ const OverviewPage: React.FC = () => {
     void Promise.all([
       listTransactionsForMonth(currentMonth),
       Promise.all(priorMonths.map((m) => listTransactionsForMonth(m))),
-      Promise.allSettled([listDebts()]),
     ])
-      .then(async ([currentMonthTxs, priorMonthsTxs, [debtsResult]]) => {
+      .then(async ([currentMonthTxs, priorMonthsTxs]) => {
         // Reuses currentMonthTxs instead of getOverviewSnapshot() querying
         // this same month's transactions a second time.
         const snap = await getOverviewSnapshot(currentMonthTxs);
         setSnapshot(snap);
-
-        const debtList = debtsResult.status === 'fulfilled' ? debtsResult.value : [];
-        setDebts(debtList);
-        // Debts failing to load doesn't invalidate the rest of the page (cash
-        // flow / category breakdown don't depend on it), but it does mean the
-        // financial-health score below is computed on a possibly-empty debt
-        // list rather than a genuinely debt-free one -- flag it rather than
-        // silently showing a healthier-looking score than reality.
-        setPartialLoadWarning(
-          debtsResult.status === 'rejected'
-            ? 'โหลดข้อมูลหนี้ไม่สำเร็จ — คะแนนสุขภาพการเงินด้านล่างอาจไม่ครบถ้วน'
-            : '',
-        );
 
         // Calculate Category Breakdown
         const categoryMap = new Map<string, number>();
@@ -108,12 +89,6 @@ const OverviewPage: React.FC = () => {
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'โหลดภาพรวมไม่สำเร็จ'));
   });
 
-  const health = calculateFinancialHealthScore(
-    debts,
-    totalExpenseSatang,
-    snapshot?.plannedIncomeSatang ?? 0,
-  );
-
   return (
     <IonPage>
       <IonHeader className="ion-no-border">
@@ -131,9 +106,6 @@ const OverviewPage: React.FC = () => {
         )}
 
         {error && <IonText color="danger"><p>{error}</p></IonText>}
-        {!error && partialLoadWarning && (
-          <IonText color="warning"><p style={{ fontSize: 12.5 }}>{partialLoadWarning}</p></IonText>
-        )}
 
         {snapshot && (
           <>
@@ -153,9 +125,6 @@ const OverviewPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Financial Health Score Card */}
-            <FinancialHealthCard health={health} />
-
             {/* Category Donut Breakdown */}
             <CategoryDonutChart items={donutItems} totalSatang={totalExpenseSatang} />
 
@@ -165,10 +134,7 @@ const OverviewPage: React.FC = () => {
             <div className="tl-card" style={{ padding: '8px 18px', marginTop: 14, marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
               <FlowRow label="รายรับวางแผนไว้" amountSatang={snapshot.plannedIncomeSatang} direction="in" />
               <div style={{ borderTop: '1px solid var(--tl-border)' }}>
-                <FlowRow label="ค่าใช้ชีวิต" amountSatang={snapshot.totals.livingExpenseSatang} direction="out" />
-              </div>
-              <div style={{ borderTop: '1px solid var(--tl-border)' }}>
-                <FlowRow label="จ่ายหนี้สิน" amountSatang={snapshot.totals.debtPaymentSatang} direction="out" />
+                <FlowRow label="รายจ่ายรวม" amountSatang={snapshot.totals.expenseSatang} direction="out" />
               </div>
               {snapshot.totals.refundSatang > 0 && (
                 <div style={{ borderTop: '1px solid var(--tl-border)' }}>
@@ -176,24 +142,6 @@ const OverviewPage: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {snapshot.debtCount > 0 && (
-              <div className="tl-card" style={{ marginTop: 14, marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
-                <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--ion-text-color)' }}>
-                  ภาพรวมหนี้สิน ({snapshot.debtCount} รายการ)
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div style={{ background: 'var(--tl-primary-soft)', padding: 12, borderRadius: 'var(--tl-radius-sm)' }}>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 600 }}>ยอดคงเหลือรวม</p>
-                    <p className="tl-amount tl-amount--debt" style={{ fontSize: 18, margin: '4px 0 0' }}>{formatTHB(snapshot.totalOutstandingSatang)}</p>
-                  </div>
-                  <div style={{ background: 'var(--tl-primary-soft)', padding: 12, borderRadius: 'var(--tl-radius-sm)' }}>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 600 }}>ขั้นต่ำที่ยังขาด</p>
-                    <p className="tl-amount tl-amount--debt" style={{ fontSize: 18, margin: '4px 0 0' }}>{formatTHB(snapshot.totalMinimumDueSatang)}</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         )}
       </IonContent>

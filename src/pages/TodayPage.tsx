@@ -67,9 +67,8 @@ const TodayPage: React.FC = () => {
 
   const dailySpend = snapshot && expenseSatang !== null
     ? calculateDailySpendLimit(
-      snapshot.totals.livingExpenseSatang + snapshot.totals.debtPaymentSatang,
+      snapshot.totals.expenseSatang,
       expenseSatang,
-      0,
       snapshot.plannedIncomeSatang,
     )
     : null;

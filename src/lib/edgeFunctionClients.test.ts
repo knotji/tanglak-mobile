@@ -10,7 +10,6 @@ vi.mock('@/lib/supabaseClient', () => ({
   },
 }));
 
-import { addDebtPayment } from '@/lib/addDebtPayment';
 import {
   deleteTransaction,
   saveTransaction,
@@ -20,41 +19,6 @@ import {
 describe('Edge Function clients', () => {
   beforeEach(() => {
     invoke.mockReset();
-  });
-
-  describe('addDebtPayment', () => {
-    const input = {
-      debtId: 'debt-1',
-      amount: 1234.56,
-      occurredAt: '2026-07-29T03:15:00.000Z',
-    };
-
-    it('forwards the reviewed payment without changing its values', async () => {
-      invoke.mockResolvedValue({ data: { transactionId: 'tx-1' }, error: null });
-
-      await addDebtPayment(input);
-
-      expect(invoke).toHaveBeenCalledWith('add-debt-payment', { body: input });
-    });
-
-    it('rejects a transport failure', async () => {
-      invoke.mockResolvedValue({ data: null, error: new Error('network unavailable') });
-
-      await expect(addDebtPayment(input)).rejects.toThrow(
-        'บันทึกการจ่ายหนี้ไม่สำเร็จ กรุณาลองใหม่',
-      );
-    });
-
-    it('surfaces the validated backend error', async () => {
-      invoke.mockResolvedValue({
-        data: { error: 'จำนวนเงินต้องมากกว่า 0 บาท' },
-        error: null,
-      });
-
-      await expect(addDebtPayment(input)).rejects.toThrow(
-        'จำนวนเงินต้องมากกว่า 0 บาท',
-      );
-    });
   });
 
   describe('saveTransaction', () => {

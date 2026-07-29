@@ -15,9 +15,8 @@ export interface DailySpendLimitResult {
 }
 
 /**
- * @param monthSpentSatang total living expenses + debt payments so far this month (incl. today)
- * @param todaySpentSatang living expenses + debt payments spent today only
- * @param debtMinimumsSatang total minimum payments owed this month across active debts
+ * @param monthSpentSatang total expenses so far this month (incl. today)
+ * @param todaySpentSatang expenses spent today only
  * @param monthlyIncomeSatang planned income for the month (from the Budget page, same source as OverviewPage).
  *   Pass 0 if the user hasn't set a budget yet -- the result will correctly show ฿0 available rather than
  *   a made-up number.
@@ -25,7 +24,6 @@ export interface DailySpendLimitResult {
 export function calculateDailySpendLimit(
   monthSpentSatang: number,
   todaySpentSatang: number,
-  debtMinimumsSatang: number,
   monthlyIncomeSatang: number,
   now: Date = new Date(),
 ): DailySpendLimitResult {
@@ -37,9 +35,9 @@ export function calculateDailySpendLimit(
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const daysRemaining = Math.max(1, daysInMonth - currentDay + 1);
 
-  // Available funds for daily living = Income - Debt Obligations - Expenses spent before today
+  // Available funds for today = planned income - expenses spent before today
   const spentBeforeTodaySatang = Math.max(0, monthSpentSatang - todaySpentSatang);
-  const remainingBudgetSatang = Math.max(0, monthlyIncomeSatang - debtMinimumsSatang - spentBeforeTodaySatang);
+  const remainingBudgetSatang = Math.max(0, monthlyIncomeSatang - spentBeforeTodaySatang);
   const dailyLimitSatang = Math.round(remainingBudgetSatang / daysRemaining);
 
   const remainingTodaySatang = dailyLimitSatang - todaySpentSatang;
