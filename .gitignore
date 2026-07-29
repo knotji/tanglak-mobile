@@ -6,6 +6,8 @@ android/app/build
 android/.gradle
 android/local.properties
 *.log
+playwright-report
+test-results
 supabase/.temp
 /android/app/tanglak-release.jks
 /android/keystore.properties
