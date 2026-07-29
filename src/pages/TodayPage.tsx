@@ -20,39 +20,53 @@ function sumSatang(transactions: Transaction[], types: Transaction['type'][]): n
 
 const TodayPage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
-  const [debts, setDebts] = useState<Debt[]>([]);
+  const [debts, setDebts] = useState<Debt[] | null>(null);
   const [snapshot, setSnapshot] = useState<OverviewSnapshot | null>(null);
-  const [error, setError] = useState('');
-  // Separate from `error`: debts/snapshot failing shouldn't block the whole
-  // page (transactions may have loaded fine), but silently showing "no
-  // debts" when the load actually failed would misrepresent real debt data
-  // as if it didn't exist -- so surface it as a visible, non-blocking notice
-  // instead of swallowing it.
-  const [partialLoadWarning, setPartialLoadWarning] = useState('');
+  const [transactionsError, setTransactionsError] = useState('');
+  const [debtsError, setDebtsError] = useState('');
+  const [snapshotError, setSnapshotError] = useState('');
   const router = useIonRouter();
   const isPrivacy = usePrivacyMode();
 
   const load = async (event?: CustomEvent) => {
     try {
-      const txs = await listTodayTransactions();
-      setTransactions(txs);
-      setError('');
-
-      const [debtsResult, snapResult] = await Promise.allSettled([listDebts(), getOverviewSnapshot()]);
-      const debtList = debtsResult.status === 'fulfilled' ? debtsResult.value : [];
-      setDebts(debtList);
-      setSnapshot(snapResult.status === 'fulfilled' ? snapResult.value : null);
-      setPartialLoadWarning(
-        debtsResult.status === 'rejected' || snapResult.status === 'rejected'
-          ? 'โหลดข้อมูลหนี้/สรุปยอดไม่สำเร็จบางส่วน ตัวเลขด้านล่างอาจไม่ครบถ้วน — ลองรีเฟรชอีกครั้ง'
-          : '',
+      const debtsRequest = listDebts();
+      const transactionsTask = listTodayTransactions().then(
+        (value) => {
+          setTransactions(value);
+          setTransactionsError('');
+        },
+        (reason: unknown) => {
+        setTransactionsError(
+          reason instanceof Error
+            ? reason.message
+            : 'โหลดรายการวันนี้ไม่สำเร็จ',
+        );
+        },
       );
 
-      if (isDebtReminderEnabled() && debtsResult.status === 'fulfilled') {
-        void scheduleDebtReminders(debtList);
-      }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'โหลดข้อมูลไม่สำเร็จ');
+      const debtsTask = debtsRequest.then(
+        (value) => {
+          setDebts(value);
+          setDebtsError('');
+          if (isDebtReminderEnabled()) void scheduleDebtReminders(value);
+        },
+        () => {
+          setDebtsError('โหลดเป้าหมายปลดหนี้ไม่สำเร็จ');
+        },
+      );
+
+      const snapshotTask = getOverviewSnapshot(undefined, debtsRequest).then(
+        (value) => {
+          setSnapshot(value);
+          setSnapshotError('');
+        },
+        () => {
+          setSnapshotError('คำนวณงบที่ใช้ได้วันนี้ไม่สำเร็จ');
+        },
+      );
+
+      await Promise.all([transactionsTask, debtsTask, snapshotTask]);
     } finally {
       (event?.target as HTMLIonRefresherElement | undefined)?.complete();
     }
@@ -62,16 +76,21 @@ const TodayPage: React.FC = () => {
     void load();
   });
 
-  const expenseSatang = transactions ? sumSatang(transactions, ['expense', 'debt_payment']) : 0;
-  const incomeSatang = transactions ? sumSatang(transactions, ['income', 'refund']) : 0;
+  const expenseSatang = transactions
+    ? sumSatang(transactions, ['expense', 'debt_payment'])
+    : null;
+  const incomeSatang = transactions
+    ? sumSatang(transactions, ['income', 'refund'])
+    : null;
 
-  const monthSpentSatang = snapshot ? snapshot.totals.livingExpenseSatang + snapshot.totals.debtPaymentSatang : expenseSatang;
-  const dailySpend = calculateDailySpendLimit(
-    monthSpentSatang,
-    expenseSatang,
-    snapshot?.totalMinimumDueSatang ?? 0,
-    snapshot?.plannedIncomeSatang ?? 0,
-  );
+  const dailySpend = snapshot && expenseSatang !== null
+    ? calculateDailySpendLimit(
+      snapshot.totals.livingExpenseSatang + snapshot.totals.debtPaymentSatang,
+      expenseSatang,
+      snapshot.totalMinimumDueSatang,
+      snapshot.plannedIncomeSatang,
+    )
+    : null;
 
   return (
     <IonPage>
@@ -82,14 +101,11 @@ const TodayPage: React.FC = () => {
 
         <PageHeader title="วันนี้" subtitle="สรุปยอดใช้จ่ายวันนี้และรายการล่าสุด" />
 
-        {transactions === null && !error && (
+        {transactions === null && !transactionsError && (
           <div className="ion-text-center ion-margin-top"><IonSpinner /></div>
         )}
 
-        {error && <IonText color="danger"><p>{error}</p></IonText>}
-        {!error && partialLoadWarning && (
-          <IonText color="warning"><p style={{ fontSize: 12.5 }}>{partialLoadWarning}</p></IonText>
-        )}
+        {transactionsError && <IonText color="danger"><p>{transactionsError}</p></IonText>}
 
         {transactions && (
           <>
@@ -97,12 +113,12 @@ const TodayPage: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <span className="tl-hero-title">รายจ่ายวันนี้</span>
-                  <div className="tl-hero-amount">{maskAmount(formatTHB(expenseSatang), isPrivacy)}</div>
+                  <div className="tl-hero-amount">{maskAmount(formatTHB(expenseSatang ?? 0), isPrivacy)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <span className="tl-hero-title">รายรับวันนี้</span>
                   <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: '#34d399', fontVariantNumeric: 'tabular-nums' }}>
-                    {maskAmount(formatTHB(incomeSatang, { showPositiveSign: true }), isPrivacy)}
+                    {maskAmount(formatTHB(incomeSatang ?? 0, { showPositiveSign: true }), isPrivacy)}
                   </div>
                 </div>
               </div>
@@ -138,12 +154,23 @@ const TodayPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Daily Safe Spend Limit Card */}
-            <DailySpendCard daily={dailySpend} />
-
-            {/* Debt Freedom Date Widget */}
-            <DebtFreedomWidget debts={debts} />
           </>
+        )}
+
+        {dailySpend && <DailySpendCard daily={dailySpend} />}
+        {!dailySpend && !snapshotError && !transactionsError && (
+          <SectionLoadingCard message="กำลังคำนวณงบที่ใช้ได้วันนี้…" />
+        )}
+        {snapshotError && (
+          <SectionErrorCard message={snapshotError} />
+        )}
+
+        {debts && <DebtFreedomWidget debts={debts} />}
+        {!debts && !debtsError && (
+          <SectionLoadingCard message="กำลังโหลดเป้าหมายปลดหนี้…" />
+        )}
+        {debtsError && (
+          <SectionErrorCard message={debtsError} />
         )}
 
         {transactions?.length === 0 && (
@@ -165,5 +192,46 @@ const TodayPage: React.FC = () => {
     </IonPage>
   );
 };
+
+const SectionLoadingCard: React.FC<{ message: string }> = ({ message }) => (
+  <div
+    className="tl-card"
+    style={{
+      minHeight: 96,
+      marginBottom: 16,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      color: 'var(--tl-text-secondary)',
+      fontSize: 13,
+      fontWeight: 600,
+    }}
+  >
+    <IonSpinner name="crescent" />
+    <span>{message}</span>
+  </div>
+);
+
+const SectionErrorCard: React.FC<{ message: string }> = ({ message }) => (
+  <div
+    className="tl-card"
+    role="alert"
+    style={{
+      minHeight: 72,
+      marginBottom: 16,
+      display: 'flex',
+      alignItems: 'center',
+      padding: 16,
+      borderColor: '#fecaca',
+      background: '#fff7f7',
+      color: '#b91c1c',
+      fontSize: 13,
+      fontWeight: 700,
+    }}
+  >
+    {message} — ดึงหน้าจอลงเพื่อลองใหม่
+  </div>
+);
 
 export default TodayPage;

@@ -11,6 +11,48 @@ interface DailySpendCardProps {
 export const DailySpendCard: React.FC<DailySpendCardProps> = ({ daily }) => {
   const isPrivacy = usePrivacyMode();
 
+  if (!daily.hasPlannedIncome) {
+    return (
+      <div
+        className="tl-card"
+        style={{
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+          borderColor: '#cbd5e1',
+          padding: 16,
+          marginBottom: 16,
+          borderRadius: 18,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            background: '#e2e8f0',
+            color: '#475569',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <IonIcon icon={walletOutline} />
+        </div>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: '#0f172a' }}>
+            ยังไม่ได้ตั้งงบรายรับเดือนนี้
+          </h3>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: '#64748b', fontWeight: 500, lineHeight: 1.45 }}>
+            เพิ่มรายรับที่คาดไว้ในหน้างบประมาณ เพื่อคำนวณวงเงินที่ใช้ได้ต่อวัน
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="tl-card"

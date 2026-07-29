@@ -103,3 +103,63 @@ test('authenticated user can confirm and delete a transaction', async ({ page })
 
   await expect(page.getByText('ร้าน E2E', { exact: true })).toBeHidden();
 });
+
+test('Today shows a neutral setup state when planned income is missing', async ({ page }) => {
+  await authenticate(page);
+
+  await page.route(`${SUPABASE_ORIGIN}/**`, async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+
+    if (url.pathname === '/rest/v1/transactions' && request.method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '[]',
+      });
+      return;
+    }
+
+    if (url.pathname === '/rest/v1/debts' && request.method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '[]',
+      });
+      return;
+    }
+
+    if (url.pathname === '/rest/v1/monthly_budgets' && request.method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '[]',
+      });
+      return;
+    }
+
+    if (url.pathname === '/auth/v1/user') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: '00000000-0000-4000-8000-000000000001',
+          aud: 'authenticated',
+          role: 'authenticated',
+          email: 'e2e@example.com',
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+
+  await page.goto('/tabs/today');
+
+  await expect(page.getByText('ยังไม่ได้ตั้งงบรายรับเดือนนี้')).toBeVisible();
+  await expect(page.getByText(/เพิ่มรายรับที่คาดไว้ในหน้างบประมาณ/)).toBeVisible();
+  await expect(page.getByText('100%', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('ใกล้เต็มงบประจำวัน', { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/กำลังคำนวณงบที่ใช้ได้วันนี้/)).toHaveCount(0);
+});

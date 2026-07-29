@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import { bangkokMonthRange, currentBangkokMonth } from '@/lib/bangkokDate';
-import { listDebts, remainingToMinimum } from '@/lib/debts';
+import { listDebts, remainingToMinimum, type Debt } from '@/lib/debts';
 import type { Transaction } from '@/lib/transactions';
 
 // Ported from tanglak/src/lib/finance/calculations.ts (calculateMonthlyTotals,
@@ -58,13 +58,21 @@ async function getMonthlyTotals(month: string): Promise<MonthlyTotals> {
  * its category breakdown), so without this it was firing two separate
  * "select this month's transactions" queries against the same table/range
  * on every single page visit.
+ *
+ * `debtsSource`, if given, similarly reuses either an already-loaded debt
+ * list or an in-flight debt request. TodayPage needs the same debt rows for
+ * its payoff widget, so sharing the promise avoids duplicate Supabase reads
+ * while still letting the overview's other queries run in parallel.
  */
-export async function getOverviewSnapshot(monthTransactions?: Pick<Transaction, 'type' | 'amountSatang'>[]): Promise<OverviewSnapshot> {
+export async function getOverviewSnapshot(
+  monthTransactions?: Pick<Transaction, 'type' | 'amountSatang'>[],
+  debtsSource?: Debt[] | Promise<Debt[]>,
+): Promise<OverviewSnapshot> {
   const month = currentBangkokMonth();
   const [totals, plannedIncomeSatang, debts] = await Promise.all([
     monthTransactions ? Promise.resolve(summarizeMonthlyTotals(monthTransactions)) : getMonthlyTotals(month),
     getPlannedIncomeSatang(month),
-    listDebts(),
+    debtsSource ? Promise.resolve(debtsSource) : listDebts(),
   ]);
 
   const cashRemainingSatang = plannedIncomeSatang + totals.refundSatang - totals.livingExpenseSatang - totals.debtPaymentSatang;

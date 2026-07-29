@@ -2,6 +2,7 @@ import { formatTHB } from '@/lib/money';
 import { nowBangkokDatetimeLocal } from '@/lib/bangkokDate';
 
 export interface DailySpendLimitResult {
+  hasPlannedIncome: boolean;
   dailyLimitSatang: number;
   todaySpentSatang: number;
   remainingTodaySatang: number;
@@ -42,12 +43,18 @@ export function calculateDailySpendLimit(
   const dailyLimitSatang = Math.round(remainingBudgetSatang / daysRemaining);
 
   const remainingTodaySatang = dailyLimitSatang - todaySpentSatang;
-  const percentageUsedToday = dailyLimitSatang > 0 ? Math.min(100, Math.round((todaySpentSatang / dailyLimitSatang) * 100)) : 100;
+  const hasPlannedIncome = monthlyIncomeSatang > 0;
+  const percentageUsedToday = dailyLimitSatang > 0
+    ? Math.min(100, Math.round((todaySpentSatang / dailyLimitSatang) * 100))
+    : 0;
 
   let statusText = 'อยู่ในงบประจำวัน';
   let statusColor = '#10b981';
 
-  if (remainingTodaySatang < 0) {
+  if (!hasPlannedIncome) {
+    statusText = 'ยังไม่ได้ตั้งงบรายรับ';
+    statusColor = '#64748b';
+  } else if (remainingTodaySatang < 0) {
     statusText = 'เกินงบประจำวัน';
     statusColor = '#ef4444';
   } else if (percentageUsedToday >= 80) {
@@ -56,6 +63,7 @@ export function calculateDailySpendLimit(
   }
 
   return {
+    hasPlannedIncome,
     dailyLimitSatang,
     todaySpentSatang,
     remainingTodaySatang,

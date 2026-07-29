@@ -8,13 +8,17 @@ const FIXED_NOW = new Date('2026-07-10T08:00:00Z');
 describe('calculateDailySpendLimit', () => {
   it('does not fabricate income -- zero planned income means zero budget, not a hidden default', () => {
     const result = calculateDailySpendLimit(0, 0, 0, 0, FIXED_NOW);
+    expect(result.hasPlannedIncome).toBe(false);
     expect(result.dailyLimitSatang).toBe(0);
     expect(result.remainingTodaySatang).toBe(0);
+    expect(result.percentageUsedToday).toBe(0);
+    expect(result.statusText).toBe('ยังไม่ได้ตั้งงบรายรับ');
   });
 
   it('splits (income - debt minimums - prior spend) evenly across remaining days', () => {
     // income 30,000.00, debt minimums 5,000.00, spent before today 0, 22 days remaining
     const result = calculateDailySpendLimit(0, 0, 500000, 3000000, FIXED_NOW);
+    expect(result.hasPlannedIncome).toBe(true);
     expect(result.daysRemainingInMonth).toBe(22);
     expect(result.dailyLimitSatang).toBe(Math.round(2500000 / 22));
   });
