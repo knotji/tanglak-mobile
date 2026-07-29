@@ -1,16 +1,12 @@
 import { useState } from 'react';
 import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonToggle, IonToolbar, useIonViewWillEnter } from '@ionic/react';
-import { notificationsOutline, personOutline, logOutOutline, fingerPrintOutline } from 'ionicons/icons';
+import { personOutline, logOutOutline, fingerPrintOutline } from 'ionicons/icons';
 import PageHeader from '@/components/PageHeader';
 import { supabase } from '@/lib/supabaseClient';
-import { listDebts } from '@/lib/debts';
-import { requestNotificationPermission, scheduleDebtReminders, cancelAllDebtReminders } from '@/lib/notifications';
-import { useDebtReminderEnabled, setDebtReminderEnabled } from '@/lib/notificationPrefs';
 import { isBiometricLockEnabled, setBiometricLockEnabled, authenticateBiometrics } from '@/lib/biometrics';
 
 const SettingsPage: React.FC = () => {
   const [email, setEmail] = useState<string | null>(null);
-  const notifyEnabled = useDebtReminderEnabled();
   const [biometricEnabled, setBiometricEnabled] = useState(() => isBiometricLockEnabled());
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -18,27 +14,6 @@ const SettingsPage: React.FC = () => {
   useIonViewWillEnter(() => {
     void supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
   });
-
-  const handleToggleNotify = async (checked: boolean) => {
-    if (checked) {
-      setBusy(true);
-      const granted = await requestNotificationPermission();
-      if (granted) {
-        const debts = await listDebts();
-        const count = await scheduleDebtReminders(debts);
-        setDebtReminderEnabled(true);
-        setNotice(count > 0 ? `ตั้งเตือนวันชำระหนี้แล้ว ${count} รายการ` : 'เปิดการแจ้งเตือนแล้ว');
-      } else {
-        setNotice('ยังไม่ได้รับการอนุญาตการแจ้งเตือน');
-        setDebtReminderEnabled(false);
-      }
-      setBusy(false);
-    } else {
-      setDebtReminderEnabled(false);
-      await cancelAllDebtReminders();
-      setNotice('ปิดการแจ้งเตือนแล้ว');
-    }
-  };
 
   const handleToggleBiometric = async (checked: boolean) => {
     setBusy(true);
@@ -68,7 +43,7 @@ const SettingsPage: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding" fullscreen>
-        <PageHeader title="ตั้งค่า" subtitle="บัญชี ความปลอดภัย และการแจ้งเตือน" />
+        <PageHeader title="ตั้งค่า" subtitle="บัญชีและความปลอดภัย" />
 
         <div className="tl-card" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
           <div className="tl-icon-badge tl-icon-badge--income" style={{ width: 44, height: 44, fontSize: 20 }}>
@@ -106,34 +81,9 @@ const SettingsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Debt Reminder Toggle */}
-        <div className="tl-card" style={{ marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="tl-icon-badge tl-icon-badge--transfer" style={{ width: 40, height: 40, fontSize: 18 }}>
-                <IonIcon icon={notificationsOutline} />
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>แจ้งเตือนวันครบกำหนดชำระหนี้</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)' }}>
-                  เตือนล่วงหน้า 3 วัน เวลา 09:00 น.
-                </p>
-              </div>
-            </div>
-            {busy ? (
-              <IonSpinner name="dots" />
-            ) : (
-              <IonToggle
-                checked={notifyEnabled}
-                onIonChange={(e) => void handleToggleNotify(e.detail.checked)}
-                aria-label="แจ้งเตือนวันชำระหนี้"
-              />
-            )}
-          </div>
-          {notice && (
-            <p style={{ margin: '10px 0 0', fontSize: 12.5, color: '#4f46e5', fontWeight: 600 }}>{notice}</p>
-          )}
-        </div>
+        {notice && (
+          <p style={{ margin: '10px 0 0', fontSize: 12.5, color: '#4f46e5', fontWeight: 600 }}>{notice}</p>
+        )}
 
         <div style={{ marginTop: 24, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
           <IonButton

@@ -48,23 +48,21 @@ CRITICAL RULES:
 3. Keep requiresReview to true.
 4. If a field is not present or cannot be read clearly, omit the field and append the field name (camelCase) to the "unclearFields" array.
 5. All money amounts must be extracted as numbers (float/decimal format, e.g. 1500.50).
-6. The "documentType" field must be one of: "salary_slip", "transfer_slip", "receipt", "delivery_receipt", "debt_statement", "other".
+6. The "documentType" field must be one of: "salary_slip", "transfer_slip", "receipt", "delivery_receipt", "other".
 7. For "transaction.occurredAt": report the date/time exactly as printed on the document (e.g. "11 Jul 26 07:26 +0700", "11 July 2026", "2026-07-11T07:26:00+07:00"). Do NOT perform date/timezone conversion or arithmetic yourself. If you are not confident about the exact characters printed, omit the field and add "transaction.occurredAt" to "unclearFields" rather than guessing.
 8. For "transaction.categoryId": choose exactly one id from this fixed list -- never invent a new id or use a label instead of an id: ${CATEGORY_ID_LIST}. Also set "transaction.categoryConfidence" (0 to 1) and a short "transaction.categoryReason". If nothing gives any signal, use "other" (or "other_income" for income) rather than guessing.
-9. You may be given MULTIPLE images representing consecutive pages of the SAME document (e.g. a multi-page credit-bureau report). Treat them as one document and combine information across all pages into a single result -- for example, the account holder's name might be on page 1 (a cover/summary page) while the actual outstanding balance, minimum payment, and due date for a specific trade line are in a table on page 2 or later. Do not report only what's on the first page if a later page has the actual figures. If a report lists multiple separate credit accounts/trade lines, extract the one with the largest outstanding balance (the one most useful to plan around) and note in a warning that other accounts exist and were not extracted.
+9. You may be given MULTIPLE images representing consecutive pages of the SAME receipt or statement. Treat them as one document and combine transaction information across all pages into a single result.
 
 EXTRACTION SCHEMES BY DOCUMENT TYPE:
 - "salary_slip": under "salary": employer, payPeriod, grossIncome, netIncome, tax, socialSecurity, deductions (array of {label, amount}). Under "transaction": type "income", amount = netIncome, occurredAt = payment date, merchant = employer.
 - "receipt" / "delivery_receipt": under "receipt": subtotal, deliveryFee, serviceFee, discount, totalPaid, items (array of {name, quantity, amount}). Under "transaction": type "expense", amount = totalPaid, occurredAt, merchant, paymentMethod.
 - "transfer_slip" (a bank-transfer/PromptPay confirmation screenshot): most of these are NOT a real fund transfer -- in Thailand, paying a shop, restaurant, or service by scanning a QR code or sending a bank transfer is extremely common and works exactly like paying by card, so decide "transaction.type" from what the destination actually is, not from the slip format alone:
   - Destination looks like a business/shop/restaurant/vendor/service (the most common case) -> type "expense", and pick the best matching categoryId for what was likely purchased.
-  - Destination matches a credit card or loan company (e.g. KTC, Krungsri Consumer, Easy Buy, Aeon, Citi, CardX, SCB Card, or a bank's own credit/loan department) -> type "debt_payment", and also set possibleDebtPayment true.
+  - Destination matches a credit card or loan company (e.g. KTC, Krungsri Consumer, Easy Buy, Aeon, Citi, CardX, SCB Card, or a bank's own credit/loan department) -> type "expense", categoryId "debt", and also set possibleDebtPayment true.
   - Sender and destination appear to be the same person, or the slip has a self-transfer note (e.g. "โอนเข้าบัญชีตัวเอง") -> type "transfer", and also set possibleOwnAccountTransfer true.
   - Paying another individual person with no goods/service context (e.g. splitting a bill, sending money to family) -> type "transfer".
   - If genuinely unclear which of these applies, default to "expense" rather than "transfer" -- most transfer-shaped slips are purchases, not fund transfers.
   Always extract under "transaction" regardless of which type you chose: amount, occurredAt, merchant (destination name), referenceNumber, accountLastFour, destinationAccountLastFour, bank, possibleDebtPayment, possibleOwnAccountTransfer.
-- "debt_statement": under "debt": creditor, debtName, debtType ("credit_card"|"personal_loan"|"installment"|"mortgage"|"auto_loan"|"buy_now_pay_later"|"informal_loan"|"other"), outstandingBalance, statementBalance, amountDue, minimumPayment, dueDate (YYYY-MM-DD), interestRateAnnual, remainingInstallments, accountLastFour.
-
 Always check for handwriting, stamps, or barcodes. If confidence is low, set "confidence" lower (e.g. 0.5) and add warnings.
 `;
 
@@ -219,10 +217,10 @@ const confidenceLike = () => z.preprocess((value) => {
 
 // --- Schema (ported from tanglak/src/lib/ai/schemas.ts) ---
 const extractedFinancialDocumentSchema = z.object({
-  documentType: z.enum(['salary_slip', 'transfer_slip', 'receipt', 'delivery_receipt', 'debt_statement', 'loan_schedule', 'other']),
+  documentType: z.enum(['salary_slip', 'transfer_slip', 'receipt', 'delivery_receipt', 'other']),
   confidence: confidenceLike().default(0),
   transaction: z.object({
-    type: z.enum(['income', 'expense', 'debt_payment', 'transfer', 'refund']).optional(),
+    type: z.enum(['income', 'expense', 'transfer', 'refund']).optional(),
     amount: moneyLike(),
     currency: z.string().optional(),
     occurredAt: z.string().optional(),
@@ -249,13 +247,6 @@ const extractedFinancialDocumentSchema = z.object({
     subtotal: moneyLike(), deliveryFee: moneyLike(), serviceFee: moneyLike(),
     discount: moneyLike(), totalPaid: moneyLike(),
     items: z.array(z.object({ name: z.string(), quantity: countLike(z.number().positive()), amount: moneyLike() })).optional(),
-  }).optional(),
-  debt: z.object({
-    creditor: z.string().optional(), debtName: z.string().optional(),
-    debtType: z.enum(['credit_card', 'personal_loan', 'installment', 'mortgage', 'auto_loan', 'buy_now_pay_later', 'informal_loan', 'other']).optional(),
-    outstandingBalance: moneyLike(), statementBalance: moneyLike(), amountDue: moneyLike(),
-    minimumPayment: moneyLike(), dueDate: z.string().optional(), interestRateAnnual: moneyLike(),
-    remainingInstallments: countLike(z.number().int().nonnegative()), accountLastFour: z.string().optional(),
   }).optional(),
   warnings: z.array(z.string()).default([]),
   unclearFields: z.array(z.string()).default([]),

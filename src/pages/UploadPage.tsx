@@ -16,9 +16,7 @@ import {
 import { cameraOutline, checkmarkCircle, imagesOutline, warningOutline, sparklesOutline } from 'ionicons/icons';
 import { extractDocument, type ExtractedFinancialDocument } from '@/lib/documentUpload';
 import { saveTransaction, type SaveTransactionInput } from '@/lib/saveTransaction';
-import { addDebtPayment } from '@/lib/addDebtPayment';
 import { CATEGORY_OPTIONS } from '@/lib/categories';
-import { listDebts, findDebtForMerchant, type Debt } from '@/lib/debts';
 import { nowBangkokDatetimeLocal } from '@/lib/bangkokDate';
 import { isoInstantToBangkokDatetimeLocal } from '@/lib/date';
 import { checkDuplicateTransaction } from '@/lib/transactions';
@@ -27,7 +25,7 @@ import PageHeader from '@/components/PageHeader';
 import FieldLabel from '@/components/FieldLabel';
 import DateTimeField from '@/components/DateTimeField';
 
-type SavableType = 'expense' | 'income' | 'transfer' | 'refund' | 'debt_payment';
+type SavableType = 'expense' | 'income' | 'transfer' | 'refund';
 
 interface DraftForm {
   type: SavableType;
@@ -35,8 +33,6 @@ interface DraftForm {
   merchant: string;
   datetimeLocal: string;
   categoryId: string;
-  debtId: string;
-  debtAutoMatched?: boolean;
   isDuplicate?: boolean;
   refNo?: string;
   bankChannel?: string;
@@ -56,27 +52,15 @@ function datetimeLocalToIso(value: string): string {
   return value ? `${value}:00+07:00` : '';
 }
 
-function draftFromExtraction(result: ExtractedFinancialDocument, debts: Debt[]): DraftForm {
+function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
   const type = result.transaction?.type;
   const savableType: SavableType =
-    type === 'income' || type === 'transfer' || type === 'refund' || type === 'debt_payment' ? type : 'expense';
+    type === 'income' || type === 'transfer' || type === 'refund' ? type : 'expense';
   const merchant = result.transaction?.merchant ?? '';
-  let categoryId = result.transaction?.categoryId ?? '';
+  let categoryId = type === 'debt_payment' ? 'debt' : (result.transaction?.categoryId ?? '');
   if ((!categoryId || categoryId === 'other') && merchant) {
     const matched = findCategoryForMerchant(merchant);
     if (matched) categoryId = matched;
-  }
-  // Only worth matching against a debt when the AI already thinks this is a
-  // debt payment -- an expense/transfer slip's merchant isn't a creditor.
-  let debtId = '';
-  let debtAutoMatched = false;
-  if (savableType === 'debt_payment') {
-    const nameToMatch = result.transaction?.receiverName || merchant;
-    const matchedDebt = findDebtForMerchant(nameToMatch, debts);
-    if (matchedDebt) {
-      debtId = matchedDebt.id;
-      debtAutoMatched = true;
-    }
   }
   return {
     type: savableType,
@@ -84,8 +68,6 @@ function draftFromExtraction(result: ExtractedFinancialDocument, debts: Debt[]):
     merchant,
     datetimeLocal: result.transaction?.occurredAt ? isoInstantToBangkokDatetimeLocal(result.transaction.occurredAt) : '',
     categoryId,
-    debtId,
-    debtAutoMatched,
     refNo: result.transaction?.refNo,
     bankChannel: result.transaction?.bankChannel ?? result.transaction?.paymentMethod,
     senderName: result.transaction?.senderName,
@@ -95,7 +77,7 @@ function draftFromExtraction(result: ExtractedFinancialDocument, debts: Debt[]):
 }
 
 function emptyDraft(): DraftForm {
-  return { type: 'expense', amount: '', merchant: '', datetimeLocal: nowBangkokDatetimeLocal(), categoryId: '', debtId: '' };
+  return { type: 'expense', amount: '', merchant: '', datetimeLocal: nowBangkokDatetimeLocal(), categoryId: '' };
 }
 
 const UploadPage: React.FC = () => {
@@ -112,22 +94,6 @@ const UploadPage: React.FC = () => {
   const [error, setError] = useState('');
   const [unclearFields, setUnclearFields] = useState<string[]>([]);
   const [draft, setDraft] = useState<DraftForm | null>(null);
-  const [debts, setDebts] = useState<Debt[]>([]);
-  const [debtsLoadFailed, setDebtsLoadFailed] = useState(false);
-
-  useIonViewWillEnter(() => {
-    setDebtsLoadFailed(false);
-    void listDebts()
-      .then(setDebts)
-      .catch(() => {
-        // An empty list here would render identically to "user has no debts
-        // yet", silently blocking the debt-payment picker below with no
-        // indication the load actually failed.
-        setDebts([]);
-        setDebtsLoadFailed(true);
-      });
-  });
-
   const reset = () => {
     for (const entry of queue) {
       if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
@@ -185,7 +151,6 @@ const UploadPage: React.FC = () => {
     if (!entryDraft.amount || !Number.isFinite(amountNumber) || amountNumber <= 0) return { kind: 'incomplete' };
     const occurredAt = datetimeLocalToIso(entryDraft.datetimeLocal);
     if (!occurredAt) return { kind: 'incomplete' };
-    if (entryDraft.type === 'debt_payment' && !entryDraft.debtId) return { kind: 'incomplete' };
 
     const amountSatang = Math.round(amountNumber * 100);
     try {
@@ -202,21 +167,17 @@ const UploadPage: React.FC = () => {
     }
 
     try {
-      if (entryDraft.type === 'debt_payment') {
-        await addDebtPayment({ debtId: entryDraft.debtId, amount: amountNumber, occurredAt });
-      } else {
-        const category = CATEGORY_OPTIONS.find((option) => option.id === entryDraft.categoryId);
-        const input: SaveTransactionInput = {
-          type: entryDraft.type,
-          amount: amountNumber,
-          occurredAt,
-          merchant: entryDraft.merchant || undefined,
-          categoryLabel: category?.label,
-        };
-        await saveTransaction(input);
-        if (entryDraft.merchant && entryDraft.categoryId) {
-          learnMerchantCategoryRule(entryDraft.merchant, entryDraft.categoryId);
-        }
+      const category = CATEGORY_OPTIONS.find((option) => option.id === entryDraft.categoryId);
+      const input: SaveTransactionInput = {
+        type: entryDraft.type,
+        amount: amountNumber,
+        occurredAt,
+        merchant: entryDraft.merchant || undefined,
+        categoryLabel: category?.label,
+      };
+      await saveTransaction(input);
+      if (entryDraft.merchant && entryDraft.categoryId) {
+        learnMerchantCategoryRule(entryDraft.merchant, entryDraft.categoryId);
       }
       return { kind: 'saved' };
     } catch (cause) {
@@ -244,7 +205,7 @@ const UploadPage: React.FC = () => {
       const url = URL.createObjectURL(files[i]);
       try {
         const result = await extractDocument(files[i]);
-        const d = draftFromExtraction(result, debts);
+        const d = draftFromExtraction(result);
         entries.push({ previewUrl: url, draft: d, unclearFields: result.unclearFields });
       } catch {
         failCount += 1;
@@ -311,10 +272,6 @@ const UploadPage: React.FC = () => {
       setError('กรุณาระบุวันที่ทำรายการ');
       return;
     }
-    if (draft.type === 'debt_payment' && !draft.debtId) {
-      setError('กรุณาเลือกหนี้ที่ต้องการจ่าย');
-      return;
-    }
     setError('');
     setStep('saving');
     const result = await saveDraftEntry(draft);
@@ -322,7 +279,7 @@ const UploadPage: React.FC = () => {
       setSavedCount((count) => count + 1);
       advanceQueue();
     } else if (result.kind === 'duplicate') {
-      // Pre-validation above already confirmed amount/date/debtId are
+      // Pre-validation above already confirmed amount/date are
       // present, so the only way saveDraftEntry itself declines is a real
       // duplicate or error -- surface the duplicate as an inline warning
       // rather than silently refusing to let the user override it.
@@ -457,12 +414,11 @@ const UploadPage: React.FC = () => {
 
               <IonSegment
                 value={draft.type}
-                onIonChange={(e) => setDraft({ ...draft, type: e.detail.value as SavableType, categoryId: '', debtId: '' })}
+                onIonChange={(e) => setDraft({ ...draft, type: e.detail.value as SavableType, categoryId: '' })}
               >
                 <IonSegmentButton value="expense"><IonText>รายจ่าย</IonText></IonSegmentButton>
                 <IonSegmentButton value="income"><IonText>รายรับ</IonText></IonSegmentButton>
                 <IonSegmentButton value="transfer"><IonText>โอนเงิน</IonText></IonSegmentButton>
-                <IonSegmentButton value="debt_payment"><IonText>จ่ายหนี้</IonText></IonSegmentButton>
               </IonSegment>
 
               <div style={{ marginTop: 18 }}>
@@ -476,49 +432,14 @@ const UploadPage: React.FC = () => {
                 />
               </div>
 
-              {draft.type === 'debt_payment' ? (
-                <div style={{ marginTop: 14 }}>
-                  <FieldLabel>หนี้ที่จะจ่าย</FieldLabel>
-                  {debtsLoadFailed ? (
-                    <IonText color="warning">
-                      <p style={{ fontSize: 13 }}>โหลดรายการหนี้ไม่สำเร็จ — ลองปิดแล้วเปิดหน้านี้ใหม่</p>
-                    </IonText>
-                  ) : debts.length === 0 ? (
-                    <p style={{ fontSize: 13, color: 'var(--tl-text-secondary)' }}>
-                      ยังไม่มีรายการหนี้ในระบบ — เพิ่มหนี้ในแท็บ &quot;หนี้สิน&quot; ก่อน
-                    </p>
-                  ) : (
-                    <>
-                      <IonSelect
-                        fill="outline"
-                        interface="action-sheet"
-                        placeholder="เลือกหนี้"
-                        value={draft.debtId}
-                        onIonChange={(e) => setDraft({ ...draft, debtId: e.detail.value, debtAutoMatched: false })}
-                      >
-                        {debts.map((debt) => (
-                          <IonSelectOption key={debt.id} value={debt.id}>{debt.name}</IonSelectOption>
-                        ))}
-                      </IonSelect>
-                      {draft.debtAutoMatched && (
-                        <p style={{ fontSize: 12, color: 'var(--tl-text-secondary)', margin: '4px 0 0' }}>
-                          จับคู่หนี้ให้อัตโนมัติจากชื่อในสลิป — ตรวจสอบก่อนบันทึก
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div style={{ marginTop: 14 }}>
-                  <FieldLabel>ร้าน/บุคคล</FieldLabel>
-                  <IonInput
-                    fill="outline"
-                    value={draft.merchant}
-                    onIonInput={(e) => setDraft({ ...draft, merchant: e.detail.value ?? '' })}
-                  />
-                </div>
-              )}
-
+              <div style={{ marginTop: 14 }}>
+                <FieldLabel>ร้าน/บุคคล</FieldLabel>
+                <IonInput
+                  fill="outline"
+                  value={draft.merchant}
+                  onIonInput={(e) => setDraft({ ...draft, merchant: e.detail.value ?? '' })}
+                />
+              </div>
               <div style={{ marginTop: 14 }}>
                 <DateTimeField
                   value={draft.datetimeLocal}
@@ -527,7 +448,7 @@ const UploadPage: React.FC = () => {
                 />
               </div>
 
-              {draft.type !== 'transfer' && draft.type !== 'debt_payment' && (
+              {draft.type !== 'transfer' && (
                 <div style={{ marginTop: 14 }}>
                   <FieldLabel>หมวดหมู่</FieldLabel>
                   <IonSelect
