@@ -70,7 +70,7 @@ export function isoInstantToBangkokDatetimeLocal(iso: string): string {
   return `${y}-${m}-${d}T${h}:${min}`;
 }
 
-/** e.g. "5 ก.ค. 2026" -- date-only counterpart of formatThaiDateTimeLabel, for date (no time) fields like a debt's due date. */
+/** e.g. "5 ก.ค. 2026" -- date-only counterpart of formatThaiDateTimeLabel. */
 export function formatThaiDateLabel(dateKey: string): string | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
   if (!match) return null;

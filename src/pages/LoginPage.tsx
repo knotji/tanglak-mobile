@@ -72,7 +72,7 @@ const LoginPage: React.FC = () => {
             </div>
             <p style={{ fontSize: 32, fontWeight: 800, color: 'var(--ion-color-primary)', margin: 0, letterSpacing: '-0.02em' }}>ตั้งหลัก</p>
             <p style={{ fontSize: 14, color: 'var(--tl-text-secondary)', marginTop: 6, fontWeight: 500 }}>
-              เห็นเงินชัด จัดหนี้เป็น ใช้ชีวิตต่อได้
+              เห็นเงินเข้าออกชัด วางแผนชีวิตได้ง่ายขึ้น
             </p>
           </div>
 

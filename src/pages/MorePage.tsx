@@ -14,7 +14,7 @@ interface MenuItem {
 const MENU_ITEMS: MenuItem[] = [
   { path: '/overview', label: 'ภาพรวมการเงิน', subtitle: 'สรุปรายรับ ค่าใช้จ่าย และสภาพคล่องเดือนนี้', icon: statsChartOutline, badgeClass: 'tl-icon-badge--income' },
   { path: '/budget', label: 'วางแผนงบประมาณ', subtitle: 'คุมงบรายจ่ายแยกตามหมวดหมู่', icon: cardOutline, badgeClass: 'tl-icon-badge--transfer' },
-  { path: '/accounts', label: 'จัดการบัญชี', subtitle: 'บัญชีธนาคาร บัตร และกระเป๋าเงิน', icon: walletOutline, badgeClass: 'tl-icon-badge--debt' },
+  { path: '/accounts', label: 'จัดการบัญชี', subtitle: 'บัญชีธนาคาร บัตร และกระเป๋าเงิน', icon: walletOutline, badgeClass: 'tl-icon-badge--expense' },
   { path: '/settings', label: 'ตั้งค่าระบบ', subtitle: 'จัดการบัญชีผู้ใช้และข้อมูลแอป', icon: settingsOutline, badgeClass: 'tl-icon-badge--expense' },
 ];
 

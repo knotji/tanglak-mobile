@@ -44,7 +44,7 @@
   --tl-border: #e2e8f0;
   --tl-income: #10b981;
   --tl-expense: #0f172a;
-  --tl-debt: #d97706;
+  --tl-warning: #d97706;
   --tl-overdue: #ef4444;
   --tl-muted: #f1f5f9;
   --tl-focus-ring: #4f46e5;
@@ -258,7 +258,6 @@ ion-header ion-toolbar > ion-button {
 .tl-amount { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
 .tl-amount--income { color: var(--tl-income); }
 .tl-amount--expense { color: var(--tl-expense); }
-.tl-amount--debt { color: var(--tl-debt); }
 .tl-amount--overdue { color: var(--tl-overdue); }
 
 /* Circle Icon Container Badges for Transactions */
@@ -282,10 +281,6 @@ ion-header ion-toolbar > ion-button {
 .tl-icon-badge--expense {
   background: rgba(15, 23, 42, 0.08);
   color: #1e293b;
-}
-.tl-icon-badge--debt {
-  background: rgba(245, 158, 11, 0.12);
-  color: #d97706;
 }
 .tl-icon-badge--transfer {
   background: rgba(79, 70, 229, 0.12);
@@ -453,5 +448,4 @@ ion-datetime::part(time-button) {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 

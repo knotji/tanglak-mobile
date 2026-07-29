@@ -120,15 +120,6 @@ test('Today shows a neutral setup state when planned income is missing', async (
       return;
     }
 
-    if (url.pathname === '/rest/v1/debts' && request.method() === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: '[]',
-      });
-      return;
-    }
-
     if (url.pathname === '/rest/v1/monthly_budgets' && request.method() === 'GET') {
       await route.fulfill({
         status: 200,

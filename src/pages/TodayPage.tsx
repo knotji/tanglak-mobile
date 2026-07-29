@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { IonContent, IonIcon, IonPage, IonRefresher, IonRefresherContent, IonSpinner, IonText, useIonRouter, useIonViewWillEnter } from '@ionic/react';
-import { cardOutline, scanOutline } from 'ionicons/icons';
+import { cardOutline, scanOutline, statsChartOutline } from 'ionicons/icons';
 import PageHeader from '@/components/PageHeader';
 import TransactionList from '@/components/TransactionList';
 import DailySpendCard from '@/components/DailySpendCard';
@@ -123,6 +123,15 @@ const TodayPage: React.FC = () => {
               >
                 <IonIcon icon={cardOutline} style={{ color: '#0f172a' }} />
                 <span>รายการทั้งหมด</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/overview', 'forward', 'push')}
+                className="tl-action-chip"
+                style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <IonIcon icon={statsChartOutline} style={{ color: '#4f46e5' }} />
+                <span>ดูภาพรวม</span>
               </button>
             </div>
 

@@ -56,7 +56,7 @@ const AccountsPage: React.FC = () => {
                     gap: 14,
                   }}
                 >
-                  <div className={`tl-icon-badge ${isCard ? 'tl-icon-badge--debt' : 'tl-icon-badge--transfer'}`}>
+                  <div className={`tl-icon-badge ${isCard ? 'tl-icon-badge--expense' : 'tl-icon-badge--transfer'}`}>
                     <IonIcon icon={isCard ? cardOutline : walletOutline} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

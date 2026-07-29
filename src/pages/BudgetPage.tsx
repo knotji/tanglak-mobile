@@ -8,7 +8,7 @@ import { useIonViewData } from '@/lib/useIonViewData';
 
 const STATUS_COLOR: Record<CategorySummary['status'], string> = {
   healthy: 'var(--tl-income)',
-  near_limit: 'var(--tl-debt)',
+  near_limit: 'var(--tl-warning)',
   overspent: 'var(--tl-overdue)',
   no_budget: 'var(--tl-text-secondary)',
 };

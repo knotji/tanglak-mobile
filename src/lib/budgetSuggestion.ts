@@ -101,7 +101,7 @@ export function suggestBudgetFromHistory(transactionsByMonth: Transaction[][]): 
 // --- Income-ratio fallback: for a user with too little (or no) categorized
 // spending history to average from (see suggestBudgetFromHistory above).
 // Rather than a real Gemini call, this applies common budgeting
-// rules-of-thumb (needs ~50% / wants ~30% / savings-debt ~20% of income,
+// rules-of-thumb (needs ~50% / wants ~30% / savings ~20% of income,
 // per widely-cited frameworks like the "50/30/20" rule) as fixed weights
 // over this app's own expense category list. It's a generic starting
 // point the user is expected to adjust, not a personalized analysis --
@@ -114,9 +114,8 @@ export function suggestBudgetFromHistory(transactionsByMonth: Transaction[][]): 
 const NEEDS_RATIO = 0.5;
 const WANTS_RATIO = 0.3;
 // The remaining ~0.2 of income is intentionally left unallocated here --
-// that's the "savings/debt" share, and this app already has a much better
-// source for the debt portion specifically (the user's real minimum-due
-// total) than a generic guess, applied separately below.
+// that's the savings share and is intentionally not turned into expense
+// category suggestions.
 
 const NEEDS_WEIGHTS: Record<string, number> = {
   groceries: 0.28,

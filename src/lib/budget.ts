@@ -38,8 +38,8 @@ async function listBudgetCategories(monthlyBudgetId: string): Promise<BudgetCate
   return (data ?? []).map((row) => ({ id: row.id, label: row.label, amountSatang: Number(row.amount_satang) }));
 }
 
-// --- Write path. No Edge Function needed here, same reasoning as debts
-// (src/lib/debts.ts): monthly_budgets.income_satang and
+// --- Write path. No Edge Function needed here:
+// monthly_budgets.income_satang and
 // budget_categories.amount_satang both have DB-level nonnegative CHECK
 // constraints (202607110001_financial_value_guards.sql), and
 // budget_categories has a unique index on (user_id, monthly_budget_id,

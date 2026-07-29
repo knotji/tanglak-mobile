@@ -148,7 +148,7 @@ const EditTransactionPage: React.FC = () => {
 
         {notFound && (
           <div className="tl-card tl-empty">
-            <p style={{ margin: 0, fontWeight: 600 }}>ไม่พบรายการนี้ หรือเป็นรายการจ่ายหนี้ซึ่งยังแก้ไขไม่ได้</p>
+            <p style={{ margin: 0, fontWeight: 600 }}>ไม่พบรายการนี้ หรือเป็นรายการเก่าที่แก้ไขไม่ได้</p>
           </div>
         )}
 

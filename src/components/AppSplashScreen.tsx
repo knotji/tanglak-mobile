@@ -76,7 +76,7 @@ export const AppSplashScreen: React.FC<AppSplashScreenProps> = ({ message = 'ก
       </h1>
 
       <p style={{ fontSize: 14, color: '#94a3b8', marginTop: 8, marginBottom: 40, fontWeight: 500 }}>
-        เห็นเงินชัด จัดหนี้เป็น ใช้ชีวิตต่อได้
+        เห็นเงินเข้าออกชัด วางแผนชีวิตได้ง่ายขึ้น
       </p>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255, 255, 255, 0.08)', padding: '8px 18px', borderRadius: 999 }}>

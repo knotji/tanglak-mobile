@@ -1,5 +1,5 @@
 import { IonIcon } from '@ionic/react';
-import { arrowDownCircle, arrowUpCircle, cardOutline, chevronForwardOutline, swapHorizontal } from 'ionicons/icons';
+import { arrowDownCircle, arrowUpCircle, chevronForwardOutline, swapHorizontal } from 'ionicons/icons';
 import type { Transaction } from '@/lib/transactions';
 import { formatTHB } from '@/lib/money';
 import { formatThaiDateTimeLabel, isoInstantToBangkokDatetimeLocal } from '@/lib/date';
@@ -9,15 +9,15 @@ const TYPE_ICON: Record<Transaction['type'], string> = {
   income: arrowDownCircle,
   refund: arrowDownCircle,
   expense: arrowUpCircle,
-  debt_payment: cardOutline,
+  debt_payment: arrowUpCircle,
   transfer: swapHorizontal,
 };
 
-const TYPE_TONE: Record<Transaction['type'], 'income' | 'expense' | 'debt' | 'overdue'> = {
+const TYPE_TONE: Record<Transaction['type'], 'income' | 'expense' | 'overdue'> = {
   income: 'income',
   refund: 'income',
   expense: 'expense',
-  debt_payment: 'debt',
+  debt_payment: 'expense',
   transfer: 'expense',
 };
 
@@ -25,7 +25,7 @@ const TYPE_LABEL: Record<Transaction['type'], string> = {
   income: 'รายรับ',
   refund: 'เงินคืน',
   expense: 'รายจ่าย',
-  debt_payment: 'จ่ายหนี้',
+  debt_payment: 'รายจ่าย',
   transfer: 'โอนเงิน',
 };
 
@@ -33,7 +33,7 @@ const BADGE_CLASS: Record<Transaction['type'], string> = {
   income: 'tl-icon-badge--income',
   refund: 'tl-icon-badge--income',
   expense: 'tl-icon-badge--expense',
-  debt_payment: 'tl-icon-badge--debt',
+  debt_payment: 'tl-icon-badge--expense',
   transfer: 'tl-icon-badge--transfer',
 };
 
