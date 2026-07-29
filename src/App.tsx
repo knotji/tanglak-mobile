@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Redirect, Route } from 'react-router-dom';
-import { IonApp, IonRouterOutlet, IonSpinner, setupIonicReact } from '@ionic/react';
+import { IonApp, IonRouterOutlet, IonSpinner, IonToast, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabaseClient';
 import BiometricLockGuard from '@/components/BiometricLockGuard';
 import AppSplashScreen from '@/components/AppSplashScreen';
 import PrivacyBlurOverlay from '@/components/PrivacyBlurOverlay';
+import { parseAuthCallbackCode } from '@/lib/authCallback';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -56,35 +57,21 @@ const PageFallback: React.FC = () => (
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [authCallbackError, setAuthCallbackError] = useState('');
 
   useEffect(() => {
     // Listen for mobile deep links (tanglak://login-callback)
     const listenerHandle = CapApp.addListener('appUrlOpen', async (data) => {
       try {
+        const code = parseAuthCallbackCode(data.url);
         await Browser.close().catch(() => {});
-        const urlStr = data.url;
-        if (urlStr.includes('access_token=') || urlStr.includes('code=')) {
-          const rawHash = urlStr.includes('#') ? urlStr.split('#')[1] : '';
-          const rawQuery = urlStr.includes('?') ? urlStr.split('?')[1]?.split('#')[0] : '';
-          const params = new URLSearchParams(rawHash || rawQuery);
-
-          const accessToken = params.get('access_token');
-          const refreshToken = params.get('refresh_token');
-          const code = params.get('code');
-
-          if (accessToken && refreshToken) {
-            const { data: sData } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-            if (sData.session) setSession(sData.session);
-          } else if (code) {
-            const { data: sData } = await supabase.auth.exchangeCodeForSession(code);
-            if (sData.session) setSession(sData.session);
-          }
-        }
+        const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error || !sessionData.session) throw error ?? new Error('No session returned');
+        setSession(sessionData.session);
+        setAuthCallbackError('');
       } catch {
-        // Fallback catch
+        console.error('[auth-callback] rejected or failed');
+        setAuthCallbackError('ลิงก์เข้าสู่ระบบไม่ถูกต้องหรือหมดอายุ กรุณาลองใหม่');
       }
     });
 
@@ -107,6 +94,13 @@ const App: React.FC = () => {
   return (
     <IonApp>
       <PrivacyBlurOverlay />
+      <IonToast
+        isOpen={authCallbackError !== ''}
+        message={authCallbackError}
+        duration={4000}
+        color="danger"
+        onDidDismiss={() => setAuthCallbackError('')}
+      />
       {checkingSession && <AppSplashScreen message="กำลังเริ่มต้นใช้งานแอป…" />}
       {!checkingSession && (
         <BiometricLockGuard>
