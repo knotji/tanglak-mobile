@@ -44,9 +44,6 @@ const BudgetPage = lazy(() => import('@/pages/BudgetPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const AccountsPage = lazy(() => import('@/pages/AccountsPage'));
 const EditTransactionPage = lazy(() => import('@/pages/EditTransactionPage'));
-const DebtFormPage = lazy(() => import('@/pages/DebtFormPage'));
-const DebtSimulatePage = lazy(() => import('@/pages/DebtSimulatePage'));
-const DebtStrategyPage = lazy(() => import('@/pages/DebtStrategyPage'));
 const BudgetEditPage = lazy(() => import('@/pages/BudgetEditPage'));
 
 /** Scoped to a single route's content area, not the full screen -- suspending here must never affect the already-mounted tab bar in a sibling route. */
@@ -127,18 +124,6 @@ const App: React.FC = () => {
                 </Route>
                 <Route exact path="/transactions/:id/edit">
                   {session ? <Suspense fallback={<PageFallback />}><EditTransactionPage /></Suspense> : <Redirect to="/login" />}
-                </Route>
-                <Route exact path="/debts/new">
-                  {session ? <Suspense fallback={<PageFallback />}><DebtFormPage /></Suspense> : <Redirect to="/login" />}
-                </Route>
-                <Route exact path="/debts/:id/edit">
-                  {session ? <Suspense fallback={<PageFallback />}><DebtFormPage /></Suspense> : <Redirect to="/login" />}
-                </Route>
-                <Route exact path="/debts/:id/simulate">
-                  {session ? <Suspense fallback={<PageFallback />}><DebtSimulatePage /></Suspense> : <Redirect to="/login" />}
-                </Route>
-                <Route exact path="/debts/strategy">
-                  {session ? <Suspense fallback={<PageFallback />}><DebtStrategyPage /></Suspense> : <Redirect to="/login" />}
                 </Route>
                 <Route exact path="/budget/edit">
                   {session ? <Suspense fallback={<PageFallback />}><BudgetEditPage /></Suspense> : <Redirect to="/login" />}

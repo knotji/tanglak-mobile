@@ -1,15 +1,11 @@
 import { useState } from 'react';
 import { IonContent, IonIcon, IonPage, IonRefresher, IonRefresherContent, IonSpinner, IonText, useIonRouter, useIonViewWillEnter } from '@ionic/react';
-import { cardOutline, scanOutline, trendingDownOutline } from 'ionicons/icons';
+import { cardOutline, scanOutline } from 'ionicons/icons';
 import PageHeader from '@/components/PageHeader';
 import TransactionList from '@/components/TransactionList';
-import DebtFreedomWidget from '@/components/DebtFreedomWidget';
 import DailySpendCard from '@/components/DailySpendCard';
 import { listTodayTransactions, type Transaction } from '@/lib/transactions';
-import { listDebts, type Debt } from '@/lib/debts';
 import { getOverviewSnapshot, type OverviewSnapshot } from '@/lib/overview';
-import { scheduleDebtReminders } from '@/lib/notifications';
-import { isDebtReminderEnabled } from '@/lib/notificationPrefs';
 import { calculateDailySpendLimit } from '@/lib/dailySpendLimit';
 import { usePrivacyMode, maskAmount } from '@/lib/privacyStore';
 import { formatTHB } from '@/lib/money';
@@ -20,17 +16,14 @@ function sumSatang(transactions: Transaction[], types: Transaction['type'][]): n
 
 const TodayPage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
-  const [debts, setDebts] = useState<Debt[] | null>(null);
   const [snapshot, setSnapshot] = useState<OverviewSnapshot | null>(null);
   const [transactionsError, setTransactionsError] = useState('');
-  const [debtsError, setDebtsError] = useState('');
   const [snapshotError, setSnapshotError] = useState('');
   const router = useIonRouter();
   const isPrivacy = usePrivacyMode();
 
   const load = async (event?: CustomEvent) => {
     try {
-      const debtsRequest = listDebts();
       const transactionsTask = listTodayTransactions().then(
         (value) => {
           setTransactions(value);
@@ -45,18 +38,7 @@ const TodayPage: React.FC = () => {
         },
       );
 
-      const debtsTask = debtsRequest.then(
-        (value) => {
-          setDebts(value);
-          setDebtsError('');
-          if (isDebtReminderEnabled()) void scheduleDebtReminders(value);
-        },
-        () => {
-          setDebtsError('โหลดเป้าหมายปลดหนี้ไม่สำเร็จ');
-        },
-      );
-
-      const snapshotTask = getOverviewSnapshot(undefined, debtsRequest).then(
+      const snapshotTask = getOverviewSnapshot().then(
         (value) => {
           setSnapshot(value);
           setSnapshotError('');
@@ -66,7 +48,7 @@ const TodayPage: React.FC = () => {
         },
       );
 
-      await Promise.all([transactionsTask, debtsTask, snapshotTask]);
+      await Promise.all([transactionsTask, snapshotTask]);
     } finally {
       (event?.target as HTMLIonRefresherElement | undefined)?.complete();
     }
@@ -87,7 +69,7 @@ const TodayPage: React.FC = () => {
     ? calculateDailySpendLimit(
       snapshot.totals.livingExpenseSatang + snapshot.totals.debtPaymentSatang,
       expenseSatang,
-      snapshot.totalMinimumDueSatang,
+      0,
       snapshot.plannedIncomeSatang,
     )
     : null;
@@ -143,15 +125,6 @@ const TodayPage: React.FC = () => {
                 <IonIcon icon={cardOutline} style={{ color: '#0f172a' }} />
                 <span>รายการทั้งหมด</span>
               </button>
-              <button
-                type="button"
-                onClick={() => router.push('/tabs/debts', 'forward', 'push')}
-                className="tl-action-chip"
-                style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                <IonIcon icon={trendingDownOutline} style={{ color: '#d97706' }} />
-                <span>จัดการหนี้สิน</span>
-              </button>
             </div>
 
           </>
@@ -163,14 +136,6 @@ const TodayPage: React.FC = () => {
         )}
         {snapshotError && (
           <SectionErrorCard message={snapshotError} />
-        )}
-
-        {debts && <DebtFreedomWidget debts={debts} />}
-        {!debts && !debtsError && (
-          <SectionLoadingCard message="กำลังโหลดเป้าหมายปลดหนี้…" />
-        )}
-        {debtsError && (
-          <SectionErrorCard message={debtsError} />
         )}
 
         {transactions?.length === 0 && (
