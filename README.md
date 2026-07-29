@@ -9,14 +9,14 @@ Ionic React + Capacitor personal-finance app for the Thai market: slip OCR expen
 - **Backend**: Supabase (`@supabase/supabase-js`, client-side, RLS-scoped anon key — no service-role key anywhere in this repo)
 - **AI**: Google Gemini Vision, called only from Supabase Edge Functions (never directly from the client)
 - **Native**: Capacitor 8 — `@capacitor/app`, `@capacitor/browser`, `@capacitor/haptics`, `@capacitor/keyboard`, `@capacitor/local-notifications`, `@capacitor/status-bar`, `@aparajita/capacitor-biometric-auth`
-- **Tests**: Vitest, pure-logic unit tests only (no Supabase mocking yet) — 147 tests across `src/lib/*.test.ts`
+- **Tests**: Vitest unit/component/Edge-contract tests plus Playwright mobile-browser E2E. Supabase calls are mocked in automated tests; no production data is used.
 - **Android only** for now; iOS not started
 
 ## Setup
 
 ```
 npm install
-cp .env.local.example .env.local   # fill VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
+cp .env.example .env.local         # fill VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
 npm run dev                         # Vite dev server, port 5190 (5173 collides with a sibling project)
 ```
 
@@ -56,7 +56,7 @@ scripts/                release build/sign/distribute PowerShell scripts
 
 | Path | Page | Notes |
 |---|---|---|
-| `/login` | `LoginPage` | email/password + Google OAuth (deep-link callback `tanglak://login-callback`, requires the redirect URL to be registered in the Supabase Auth dashboard) |
+| `/login` | `LoginPage` | email/password + Google OAuth using PKCE (exact deep-link callback `tanglak://login-callback`; the redirect URL must be registered in the Supabase Auth dashboard) |
 | `/tabs/*` | `MainTabs` → Today / Transactions / Upload / Debts / More | 5-tab bar, the main app shell |
 | `/overview` | `OverviewPage` | month cash-remaining, category donut, 4-month cash-flow trend, financial health score |
 | `/budget`, `/budget/edit` | `BudgetPage`, `BudgetEditPage` | monthly income + category budgets |
@@ -73,9 +73,10 @@ All financial writes go through these — the client never writes to `transactio
 
 - **`extract-document`** — Gemini Vision OCR on an uploaded slip/statement image. Returns normalized JSON, never invents a date (a missing/unparseable date is surfaced as missing, never defaulted to "now").
 - **`save-transaction`** — validates + inserts/updates `income`/`expense`/`transfer`/`refund` rows. Always re-validates amount/date server-side regardless of what the client sends.
-- **`add-debt-payment`** — 3-part write (transaction row + `debt_payments` row + from-scratch recalculation of the debt's current-cycle paid amount). Never increments in place.
-- **`delete-transaction`** — generic delete; recalculates the affected debt's cycle-paid amount if the deleted row was a debt payment.
+- **`add-debt-payment`** — 3-part write (transaction row + `debt_payments` row + from-scratch recalculation of the debt's current-cycle paid amount). Never increments in place. If a later step fails, the function compensates by removing earlier writes and recalculating again.
+- **`delete-transaction`** — deletes the linked `debt_payments` row before its transaction and recalculates the affected debt. If deletion or recalculation fails, it restores captured rows before returning an error.
 - **`_shared/debtCycle.ts`** — the cycle-window recalculation logic, shared between `add-debt-payment` and `delete-transaction`.
+- **`_shared/compensatingWrites.ts`** — testable failure/rollback orchestration for the two multi-step write paths above. This closes normal request-failure paths but is not a substitute for a PostgreSQL transaction if the Edge Function process is terminated between network calls; a true atomic guarantee requires a shared-backend RPC/migration outside this repository.
 
 ### Key `lib/` modules
 
@@ -104,7 +105,8 @@ All financial writes go through these — the client never writes to `transactio
 ## Testing & release
 
 ```
-npm run test.unit -- --run     # vitest, 141 tests
+npm run test.unit -- --run     # vitest, 186 tests
+npm run test:e2e               # Playwright, Pixel 7 viewport, mocked Supabase network boundary
 npx tsc --noEmit                # typecheck
 npx eslint .                    # lint (supabase/functions/** excluded — Deno runtime, own lint rules)
 npm run build                   # tsc + vite build
@@ -124,7 +126,9 @@ Firebase App ID: `1:276482893444:android:f506254af133e7cea584d1`.
 - **No iOS build.** Android only.
 - **`extract-document`'s type-classification is prompt-driven, not code-driven.** If a scanned slip lands on the wrong transaction type, check the prompt's reasoning rules first before assuming a client bug.
 - **Auto-save (opt-in toggle on Upload) skips the human review step entirely** — a scanned slip's type/amount/category go straight from the AI extraction to the database with no human check. Structural validity (has an amount, has a date) is still enforced; correctness of what the AI guessed is not.
-- **No unit tests for anything that calls Supabase** — only pure-logic modules are tested. A regression in a `lib/*.ts` function that talks to the DB won't be caught by `npm run test.unit`.
+- **Supabase automation is mocked, not live.** Unit tests cover client request/error contracts and Edge compensation failure paths, while Playwright covers auth routing and confirmed transaction deletion at the browser/network boundary. RLS policies and deployed Edge Functions still require a dedicated local-Supabase or staging integration suite.
+- **Compensating writes still have a process-crash window.** The mobile Edge Functions undo completed steps when a normal database call fails, but only a PostgreSQL transaction can guarantee atomicity if the function process is terminated between calls. That RPC belongs to the shared backend and is intentionally outside this repository.
+- **Android app data is excluded from automatic backup and device transfer.** Session and local privacy/notification preferences should be recreated after reinstall or device migration rather than restored from backup.
 - Financial-invariant documentation (14 locked rules — no partial writes, cycle-scoped debt-paid amounts, no fallback timestamps, etc.) lives in the web app at `../tanglak/docs/agent/FINANCIAL_INVARIANTS.md` — this repo doesn't duplicate it, but every write path here should still honor it.
 
 ## Multi-session note
