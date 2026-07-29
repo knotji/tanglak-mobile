@@ -37,6 +37,7 @@ The mobile app supports:
 - Transaction history, editing, and deletion
 - Slip scanning with an explicit review step
 - Monthly income and category budgets
+- AI-generated budget plans based on monthly category aggregates, with preview and confirmation before any write
 - Overview charts for category spending and four-month cash flow
 - Account listing, privacy mode, and biometric lock
 
@@ -51,6 +52,7 @@ Historical rows whose backend type is `debt_payment` remain readable and deletab
 - Keep money as integer satang in code and the database. Convert only at input/output boundaries.
 - Never fabricate missing financial data. Unknown income, date, or amount must stay empty or zero and be visible to the user.
 - Scanned data must be reviewed before saving unless the user explicitly enables auto-save.
+- AI budget plans are suggestions. The user chooses categories and confirms the plan before budget rows are created or replaced.
 
 ## Routes
 
@@ -70,6 +72,7 @@ Historical rows whose backend type is `debt_payment` remain readable and deletab
 ## Edge Functions
 
 - `extract-document` — Gemini Vision extraction for slip images
+- `suggest-budget` — Gemini budget planning from income and aggregate category totals; merchant and transaction details are not sent
 - `save-transaction` — validates and inserts/updates income, expense, transfer, and refund rows
 - `delete-transaction` — deletes transactions and retains compatibility cleanup for historical debt-payment rows
 - `_shared/debtCycle.ts` and `_shared/compensatingWrites.ts` — legacy cleanup safety used only when deleting historical debt-payment rows

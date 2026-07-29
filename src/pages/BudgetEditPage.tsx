@@ -31,6 +31,7 @@ import {
 import { listTransactionsForMonth } from '@/lib/transactions';
 import { currentBangkokMonth, shiftBangkokMonth } from '@/lib/bangkokDate';
 import { suggestBudgetFromHistory, suggestBudgetFromIncomeRatio, type BudgetSuggestion, type IncomeRatioSuggestion } from '@/lib/budgetSuggestion';
+import { requestAiBudgetPlan, summarizeBudgetHistory, type AiBudgetPlan } from '@/lib/aiBudget';
 import { CATEGORY_OPTIONS, categoryLabel } from '@/lib/categories';
 import { formatTHB, bahtToSatang } from '@/lib/money';
 import PageHeader from '@/components/PageHeader';
@@ -75,6 +76,8 @@ const BudgetEditPage: React.FC = () => {
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<BudgetSuggestion | null>(null);
   const [ratioSuggestion, setRatioSuggestion] = useState<IncomeRatioSuggestion | null>(null);
+  const [aiPlan, setAiPlan] = useState<AiBudgetPlan | null>(null);
+  const [fallbackNotice, setFallbackNotice] = useState('');
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set());
   const [applyingSuggestion, setApplyingSuggestion] = useState(false);
 
@@ -141,6 +144,8 @@ const BudgetEditPage: React.FC = () => {
     setSuggestionLoading(true);
     setSuggestion(null);
     setRatioSuggestion(null);
+    setAiPlan(null);
+    setFallbackNotice('');
     setSelectedLabels(new Set());
     try {
       const currentMonth = currentBangkokMonth();
@@ -149,6 +154,37 @@ const BudgetEditPage: React.FC = () => {
       // on the 3rd of the month would show almost nothing spent yet).
       const priorMonths = Array.from({ length: SUGGESTION_HISTORY_MONTHS }, (_, i) => shiftBangkokMonth(currentMonth, -(i + 1)));
       const monthTransactions = await Promise.all(priorMonths.map((m) => listTransactionsForMonth(m)));
+      const incomeSatang = bahtToSatang(income || '0');
+      const categoryIdByLabel = new Map(BUDGETABLE_CATEGORIES.map((item) => [item.label, item.id]));
+      const history = summarizeBudgetHistory(
+        priorMonths.map((month, index) => ({ month, transactions: monthTransactions[index] })),
+        categoryIdByLabel,
+      );
+      const currentBudgets = categories.flatMap((item) => {
+        const categoryId = categoryIdByLabel.get(item.label);
+        return categoryId ? [{ categoryId, label: item.label, amountSatang: item.amountSatang }] : [];
+      });
+
+      if (incomeSatang > 0) {
+        try {
+          const plan = await requestAiBudgetPlan({
+            monthlyIncomeSatang: incomeSatang,
+            history,
+            currentBudgets,
+            availableCategories: BUDGETABLE_CATEGORIES.map(({ id, label }) => ({ id, label })),
+          });
+          setAiPlan(plan);
+          setSelectedLabels(new Set(plan.items.map((item) => item.label)));
+          return;
+        } catch (cause) {
+          setFallbackNotice(
+            `${cause instanceof Error ? cause.message : 'AI ยังวิเคราะห์งบไม่ได้'} — แสดงสูตรพื้นฐานสำรองให้แทน`,
+          );
+        }
+      } else {
+        setFallbackNotice('กรอกรายรับเดือนนี้ก่อนเพื่อให้ AI วางแผนได้ — แสดงคำแนะนำจากประวัติแทน');
+      }
+
       const result = suggestBudgetFromHistory(monthTransactions);
 
       const alreadyBudgeted = new Set(categories.map((c) => c.label));
@@ -168,7 +204,6 @@ const BudgetEditPage: React.FC = () => {
       // suggestBudgetFromIncomeRatio's own comment: this is NOT a
       // personalized AI analysis, just a common budgeting framework
       // applied to this app's category list, clearly labeled as such below).
-      const incomeSatang = bahtToSatang(income || '0');
       const ratioResult = suggestBudgetFromIncomeRatio(incomeSatang, categoryLabel);
       setRatioSuggestion(ratioResult);
       if (!ratioResult.insufficientData) {
@@ -194,11 +229,13 @@ const BudgetEditPage: React.FC = () => {
 
   const handleApplySuggestions = async () => {
     if (!budgetId) return;
-    const items: { label: string; suggestedSatang: number }[] = suggestion
-      ? suggestion.categories
-      : ratioSuggestion
-        ? [...ratioSuggestion.needs, ...ratioSuggestion.wants]
-        : [];
+    const items: { label: string; suggestedSatang: number }[] = aiPlan
+      ? aiPlan.items
+      : suggestion
+        ? suggestion.categories
+        : ratioSuggestion
+          ? [...ratioSuggestion.needs, ...ratioSuggestion.wants]
+          : [];
     if (items.length === 0) return;
 
     setApplyingSuggestion(true);
@@ -262,9 +299,9 @@ const BudgetEditPage: React.FC = () => {
                   <IonIcon icon={sparklesOutline} />
                 </div>
                 <div style={{ flex: 1, textAlign: 'left' }}>
-                  <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: 'var(--ion-text-color)' }}>แนะนำงบจากประวัติการใช้จ่าย</p>
+                  <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: 'var(--ion-text-color)' }}>ให้ AI ช่วยจัดงบ</p>
                   <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 500 }}>
-                    วิเคราะห์ {SUGGESTION_HISTORY_MONTHS} เดือนล่าสุดที่ผ่านมา แล้วแนะนำงบต่อหมวดหมู่ให้
+                    วิเคราะห์รายรับและยอดรวม {SUGGESTION_HISTORY_MONTHS} เดือนล่าสุด แล้วสร้างแผนให้ตรวจสอบก่อนใช้
                   </p>
                 </div>
               </div>
@@ -338,10 +375,47 @@ const BudgetEditPage: React.FC = () => {
         <IonModal className="tl-compact-modal" isOpen={suggestionOpen} onDidDismiss={() => setSuggestionOpen(false)}>
           <div style={{ padding: '20px 20px 24px', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ width: 36, height: 4, borderRadius: 999, background: '#cbd5e1', margin: '0 auto 14px' }} />
-            <p style={{ margin: '0 0 4px', textAlign: 'center', fontSize: 16, fontWeight: 800, color: '#0f172a' }}>แนะนำงบจากประวัติการใช้จ่าย</p>
+            <p style={{ margin: '0 0 4px', textAlign: 'center', fontSize: 16, fontWeight: 800, color: '#0f172a' }}>แผนงบจาก AI</p>
 
             {suggestionLoading && (
               <div className="ion-text-center ion-margin-top"><IonSpinner /></div>
+            )}
+
+            {!suggestionLoading && fallbackNotice && (
+              <div
+                role="status"
+                style={{
+                  background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '10px 12px', marginTop: 12,
+                  fontSize: 12, color: '#9a3412', lineHeight: 1.5,
+                }}
+              >
+                {fallbackNotice}
+              </div>
+            )}
+
+            {!suggestionLoading && aiPlan && (
+              <>
+                <p style={{ margin: '10px 0 4px', fontSize: 13, color: 'var(--tl-text-secondary)', textAlign: 'center', lineHeight: 1.5 }}>
+                  {aiPlan.summary}
+                </p>
+                <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#047857', textAlign: 'center', fontWeight: 700 }}>
+                  กันเงินออม/เงินสำรองไว้ {formatTHB(aiPlan.savingsSatang)}
+                </p>
+                <div className="tl-card" style={{ padding: '4px 16px' }}>
+                  {aiPlan.items.map((item, index) => (
+                    <SuggestionRow
+                      key={item.categoryId}
+                      label={item.label}
+                      suggestedSatang={item.suggestedSatang}
+                      note={item.reason}
+                      checked={selectedLabels.has(item.label)}
+                      onToggle={(checked) => toggleSuggestionLabel(item.label, checked)}
+                      alreadyBudgeted={categories.some((category) => category.label === item.label)}
+                      first={index === 0}
+                    />
+                  ))}
+                </div>
+              </>
             )}
 
             {!suggestionLoading && ratioSuggestion?.insufficientData && (
@@ -422,7 +496,7 @@ const BudgetEditPage: React.FC = () => {
             )}
 
             <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {!suggestionLoading && ((suggestion && !suggestion.insufficientData) || (ratioSuggestion && !ratioSuggestion.insufficientData)) && (
+              {!suggestionLoading && (aiPlan || (suggestion && !suggestion.insufficientData) || (ratioSuggestion && !ratioSuggestion.insufficientData)) && (
                 <IonButton
                   expand="block"
                   disabled={applyingSuggestion || selectedLabels.size === 0}
@@ -435,7 +509,7 @@ const BudgetEditPage: React.FC = () => {
                     minHeight: 48,
                   }}
                 >
-                  {applyingSuggestion ? <IonSpinner name="dots" /> : `ใช้งบที่เลือก (${selectedLabels.size})`}
+                  {applyingSuggestion ? <IonSpinner name="dots" /> : `ยืนยันใช้แผนนี้ (${selectedLabels.size})`}
                 </IonButton>
               )}
               <IonButton expand="block" fill="clear" disabled={applyingSuggestion} onClick={() => setSuggestionOpen(false)} style={{ fontWeight: 600 }}>
