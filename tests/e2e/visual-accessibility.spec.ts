@@ -70,7 +70,11 @@ for (const screen of [
   { path: '/tabs/upload', heading: 'สแกนสลิป', snapshot: 'scan-slip.png' },
   { path: '/tabs/more', heading: 'เพิ่มเติม', snapshot: 'more-menu.png' },
   { path: '/budget', heading: 'งบประมาณ', snapshot: 'budget-empty.png' },
+  { path: '/budget/edit', heading: 'ตั้งงบประมาณ', snapshot: 'budget-edit.png' },
   { path: '/overview', heading: 'ภาพรวม', snapshot: 'overview-empty.png' },
+  { path: '/accounts', heading: 'บัญชี', snapshot: 'accounts-empty.png' },
+  { path: '/settings', heading: 'ตั้งค่า', snapshot: 'settings.png' },
+  { path: '/transactions/visual-missing/edit', heading: 'แก้ไขรายการ', snapshot: 'transaction-edit-missing.png' },
 ]) {
   test(`Calm Finance ${screen.heading} visual baseline`, async ({ page }) => {
     await prepareAuthenticatedEmptyState(page);
@@ -91,6 +95,10 @@ test('core screens meet automated WCAG AA checks and remain usable at large text
     { path: '/tabs/upload', heading: 'สแกนสลิป' },
     { path: '/tabs/more', heading: 'เพิ่มเติม' },
     { path: '/budget', heading: 'งบประมาณ' },
+    { path: '/budget/edit', heading: 'ตั้งงบประมาณ' },
+    { path: '/overview', heading: 'ภาพรวม' },
+    { path: '/accounts', heading: 'บัญชี' },
+    { path: '/settings', heading: 'ตั้งค่า' },
   ]) {
     await page.goto(screen.path);
     await waitForPage(page, screen.heading);

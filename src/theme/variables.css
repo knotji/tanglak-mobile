@@ -118,6 +118,10 @@ ion-toast {
   --box-shadow: 0 18px 50px rgba(36, 50, 74, .2);
 }
 
+ion-spinner {
+  --color: var(--tl-focus-ring);
+}
+
 ion-input[fill="outline"],
 ion-select[fill="outline"],
 ion-textarea[fill="outline"] {
@@ -324,6 +328,12 @@ ion-header ion-toolbar > ion-button {
   border: 1px dashed var(--tl-border);
 }
 
+.tl-empty p {
+  max-width: 30ch;
+  margin-inline: auto;
+  line-height: 1.55;
+}
+
 .tl-section-title {
   margin: 24px 2px 10px;
   color: #384157;
@@ -469,6 +479,12 @@ ion-header ion-toolbar > ion-button {
   margin-top: 22px;
   padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
 }
+.tl-form-actions ion-button {
+  margin: 0;
+}
+.tl-form-actions ion-button:first-child:not([fill="clear"]):not([fill="outline"]) {
+  --box-shadow: 0 12px 26px -14px rgba(36, 50, 74, .62);
+}
 .tl-income-card {
   border-color: #d8e9df;
   background: linear-gradient(145deg, #fffefa, #f0f8f4);
@@ -483,6 +499,7 @@ ion-header ion-toolbar > ion-button {
   overflow-y: auto;
   padding: 20px 20px 24px;
   background: linear-gradient(180deg, #fffefa, #f7f5f0);
+  overscroll-behavior: contain;
 }
 .tl-cashflow-summary {
   padding: 8px 18px;
@@ -501,6 +518,12 @@ ion-header ion-toolbar > ion-button {
 .tl-transaction-fields {
   padding: 4px 18px;
   border-radius: 24px;
+}
+
+.tl-transaction-fields ion-input,
+.tl-transaction-fields ion-select,
+.tl-transaction-fields ion-textarea {
+  --padding-start: 0;
 }
 
 @media (min-width: 560px) {
@@ -854,6 +877,7 @@ ion-datetime::part(time-button) {
   font-size: 15px;
   font-weight: 600;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  touch-action: manipulation;
 }
 .tl-field-trigger:focus-visible,
 .tl-field-trigger:active {
@@ -886,6 +910,7 @@ ion-datetime::part(time-button) {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   white-space: nowrap;
   transition: all 0.15s ease;
+  touch-action: manipulation;
 }
 .tl-action-chip:active {
   transform: scale(0.96);
