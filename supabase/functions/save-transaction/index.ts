@@ -62,8 +62,8 @@ Deno.serve(async (request) => {
     } catch {
       return json({ error: 'รูปแบบจำนวนเงินไม่ถูกต้อง' }, 400);
     }
-    if (!Number.isFinite(amountSatang) || amountSatang < 0) {
-      return json({ error: 'จำนวนเงินต้องไม่ติดลบ' }, 400);
+    if (!Number.isFinite(amountSatang) || amountSatang <= 0) {
+      return json({ error: 'จำนวนเงินต้องมากกว่า 0 บาท' }, 400);
     }
 
     // A missing/unparseable occurredAt is never defaulted to "now" -- the

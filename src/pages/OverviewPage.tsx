@@ -33,6 +33,7 @@ const OverviewPage: React.FC = () => {
   const isPrivacy = usePrivacyMode();
 
   useIonViewWillEnter(() => {
+    setError('');
     const currentMonth = currentBangkokMonth();
     // The 3 prior months for the trend chart -- currentMonth itself is
     // fetched once below and reused for both the category breakdown and the
@@ -85,6 +86,7 @@ const OverviewPage: React.FC = () => {
           return { monthLabel: `${months[i].split('-')[1]}`, incomeSatang: inc, expenseSatang: exp };
         });
         setCashFlowHistory(trend);
+        setError('');
       })
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'โหลดภาพรวมไม่สำเร็จ'));
   });

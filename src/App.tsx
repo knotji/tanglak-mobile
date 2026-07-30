@@ -72,10 +72,15 @@ const App: React.FC = () => {
       }
     });
 
-    void supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setCheckingSession(false);
-    });
+    void supabase.auth.getSession()
+      .then(({ data }) => {
+        setSession(data.session);
+      })
+      .catch(() => {
+        console.error('[auth-session] failed to restore session');
+        setAuthCallbackError('ตรวจสอบสถานะการเข้าสู่ระบบไม่สำเร็จ กรุณาลองเข้าสู่ระบบใหม่');
+      })
+      .finally(() => setCheckingSession(false));
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
