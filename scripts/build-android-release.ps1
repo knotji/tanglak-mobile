@@ -13,6 +13,8 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Lint failed.' }
   & npm.cmd run build
   if ($LASTEXITCODE -ne 0) { throw 'Web build failed.' }
+  & npm.cmd run test:e2e
+  if ($LASTEXITCODE -ne 0) { throw 'End-to-end tests failed.' }
   & npx.cmd cap sync android
   if ($LASTEXITCODE -ne 0) { throw 'Capacitor sync failed.' }
 
