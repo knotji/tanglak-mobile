@@ -10,6 +10,6 @@ if (-not (Test-Path -LiteralPath $apkPath)) { throw 'Signed release APK not foun
 
 Push-Location $repoRoot
 try {
-  & npx.cmd firebase-tools appdistribution:distribute $apkPath --app '1:276482893444:android:f506254af133e7cea584d1' --testers $Testers --release-notes $ReleaseNotes
+  & npx.cmd --yes --package firebase-tools firebase appdistribution:distribute $apkPath --app '1:276482893444:android:f506254af133e7cea584d1' --testers $Testers --release-notes $ReleaseNotes
   if ($LASTEXITCODE -ne 0) { throw 'Firebase App Distribution failed.' }
 } finally { Pop-Location }
