@@ -18,7 +18,7 @@ const DateTimeField: React.FC<DateTimeFieldProps> = ({ value, onChange, hint }) 
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <div className="tl-icon-badge tl-icon-badge--income" style={{ width: 34, height: 34, fontSize: 16 }}>
-          <IonIcon icon={calendarOutline} />
+          <IonIcon aria-hidden="true" icon={calendarOutline} />
         </div>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>วันที่และเวลา</span>
       </div>

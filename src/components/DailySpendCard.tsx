@@ -39,7 +39,7 @@ export const DailySpendCard: React.FC<DailySpendCardProps> = ({ daily }) => {
             flexShrink: 0,
           }}
         >
-          <IonIcon icon={walletOutline} />
+          <IonIcon aria-hidden="true" icon={walletOutline} />
         </div>
         <div>
           <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: '#0f172a' }}>
@@ -79,7 +79,7 @@ export const DailySpendCard: React.FC<DailySpendCardProps> = ({ daily }) => {
               fontSize: 16,
             }}
           >
-            <IonIcon icon={walletOutline} />
+            <IonIcon aria-hidden="true" icon={walletOutline} />
           </div>
           <div>
             <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: '#0f172a' }}>งบประมาณที่ใช้ได้วันนี้</h3>
@@ -148,7 +148,7 @@ export const DailySpendCard: React.FC<DailySpendCardProps> = ({ daily }) => {
 
       {daily.remainingTodaySatang < 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, color: '#ef4444', fontWeight: 600 }}>
-          <IonIcon icon={alertCircleOutline} style={{ fontSize: 16 }} />
+          <IonIcon aria-hidden="true" icon={alertCircleOutline} style={{ fontSize: 16 }} />
           <span>วันนี้ใช้เกินโควตา แนะนำประหยัดในวันถัดไปเพื่อดึงงบกลับมาครับ</span>
         </div>
       )}

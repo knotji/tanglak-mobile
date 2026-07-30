@@ -16,10 +16,10 @@ const MainTabs: React.FC = () => (
       <Route exact path="/tabs"><Redirect to="/tabs/today" /></Route>
     </IonRouterOutlet>
     <IonTabBar slot="bottom" className="main-tab-bar">
-      <IonTabButton tab="today" href="/tabs/today"><IonIcon icon={todayOutline} /><IonLabel>วันนี้</IonLabel></IonTabButton>
-      <IonTabButton tab="transactions" href="/tabs/transactions"><IonIcon icon={listOutline} /><IonLabel>รายการ</IonLabel></IonTabButton>
-      <IonTabButton tab="upload" href="/tabs/upload"><IonIcon icon={scanOutline} /><IonLabel>สแกนสลิป</IonLabel></IonTabButton>
-      <IonTabButton tab="more" href="/tabs/more"><IonIcon icon={gridOutline} /><IonLabel>เมนู</IonLabel></IonTabButton>
+      <IonTabButton tab="today" href="/tabs/today"><IonIcon aria-hidden="true" icon={todayOutline} /><IonLabel>วันนี้</IonLabel></IonTabButton>
+      <IonTabButton tab="transactions" href="/tabs/transactions"><IonIcon aria-hidden="true" icon={listOutline} /><IonLabel>รายการ</IonLabel></IonTabButton>
+      <IonTabButton tab="upload" href="/tabs/upload"><IonIcon aria-hidden="true" icon={scanOutline} /><IonLabel>สแกนสลิป</IonLabel></IonTabButton>
+      <IonTabButton tab="more" href="/tabs/more"><IonIcon aria-hidden="true" icon={gridOutline} /><IonLabel>เมนู</IonLabel></IonTabButton>
     </IonTabBar>
   </IonTabs>
 );

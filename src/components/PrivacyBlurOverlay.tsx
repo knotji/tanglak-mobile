@@ -68,7 +68,7 @@ export const PrivacyBlurOverlay: React.FC = () => {
           boxShadow: '0 10px 30px rgba(79, 70, 229, 0.5)',
         }}
       >
-        <IonIcon icon={shieldCheckmarkOutline} />
+        <IonIcon aria-hidden="true" icon={shieldCheckmarkOutline} />
       </div>
       <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>ตั้งหลัก (TangLak)</h2>
       <p style={{ margin: '6px 0 0', fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>

@@ -34,7 +34,7 @@ const MorePage: React.FC = () => {
               onClick={() => history.push(item.path)}
             >
               <div className={`tl-icon-badge ${item.badgeClass}`}>
-                <IonIcon icon={item.icon} />
+                <IonIcon aria-hidden="true" icon={item.icon} />
               </div>
               <div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--ion-text-color)' }}>{item.label}</p>

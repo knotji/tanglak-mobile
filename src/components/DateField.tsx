@@ -20,7 +20,7 @@ const DateField: React.FC<DateFieldProps> = ({ value, onChange, placeholder = 'à
         <span style={{ color: label ? 'var(--ion-text-color)' : 'var(--tl-text-secondary)' }}>
           {label ?? placeholder}
         </span>
-        <IonIcon icon={calendarOutline} style={{ fontSize: 18, color: '#4f46e5', flexShrink: 0 }} />
+        <IonIcon aria-hidden="true" icon={calendarOutline} style={{ fontSize: 18, color: '#4f46e5', flexShrink: 0 }} />
       </button>
 
       <IonModal className="tl-compact-modal" isOpen={open} onDidDismiss={() => setOpen(false)}>

@@ -91,7 +91,7 @@ export const BiometricLockGuard: React.FC<BiometricLockGuardProps> = ({ children
           marginBottom: 24,
         }}
       >
-        <IonIcon icon={shieldCheckmarkOutline} style={{ fontSize: 42, color: '#ffffff' }} />
+        <IonIcon aria-hidden="true" icon={shieldCheckmarkOutline} style={{ fontSize: 42, color: '#ffffff' }} />
       </div>
 
       <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>ตั้งหลัก</h2>
@@ -123,7 +123,7 @@ export const BiometricLockGuard: React.FC<BiometricLockGuardProps> = ({ children
             marginBottom: 14,
           }}
         >
-          <IonIcon icon={lockClosedOutline} style={{ fontSize: 26 }} />
+          <IonIcon aria-hidden="true" icon={lockClosedOutline} style={{ fontSize: 26 }} />
         </div>
 
         <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px' }}>สแกนเพื่อเข้าใช้งาน</p>
@@ -153,7 +153,7 @@ export const BiometricLockGuard: React.FC<BiometricLockGuardProps> = ({ children
             <IonSpinner name="dots" />
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <IonIcon icon={fingerPrintOutline} style={{ fontSize: 20 }} />
+              <IonIcon aria-hidden="true" icon={fingerPrintOutline} style={{ fontSize: 20 }} />
               <span>สแกนเพื่อปลดล็อก</span>
             </div>
           )}

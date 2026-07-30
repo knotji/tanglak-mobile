@@ -26,7 +26,7 @@ const PageHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, sub
             cursor: 'pointer',
           }}
         >
-          <IonIcon icon={isPrivacy ? eyeOffOutline : eyeOutline} style={{ fontSize: 16 }} />
+          <IonIcon aria-hidden="true" icon={isPrivacy ? eyeOffOutline : eyeOutline} style={{ fontSize: 16 }} />
           <span>{isPrivacy ? 'ซ่อนยอดเงิน' : 'แสดงยอดเงิน'}</span>
         </button>
       </div>

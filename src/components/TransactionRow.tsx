@@ -47,7 +47,7 @@ const TransactionRow: React.FC<{ transaction: Transaction }> = ({ transaction })
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
       <div className={`tl-icon-badge ${BADGE_CLASS[transaction.type]}`}>
-        <IonIcon icon={TYPE_ICON[transaction.type]} />
+        <IonIcon aria-hidden="true" icon={TYPE_ICON[transaction.type]} />
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
         <p style={{ margin: 0, fontWeight: 700, fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--ion-text-color)' }}>
@@ -61,7 +61,7 @@ const TransactionRow: React.FC<{ transaction: Transaction }> = ({ transaction })
       <span className={`tl-amount tl-amount--${tone}`} style={{ fontSize: 15, fontWeight: 700 }}>
         {maskAmount(formatTHB(signedSatang, { showPositiveSign: isIncoming }), isPrivacy)}
       </span>
-      <IonIcon icon={chevronForwardOutline} style={{ fontSize: 16, flexShrink: 0, color: '#94a3b8', opacity: 0.7 }} />
+      <IonIcon aria-hidden="true" icon={chevronForwardOutline} style={{ fontSize: 16, flexShrink: 0, color: '#94a3b8', opacity: 0.7 }} />
     </div>
   );
 };

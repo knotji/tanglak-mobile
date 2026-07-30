@@ -53,7 +53,7 @@ const BudgetPage: React.FC = () => {
           </IonButtons>
           <IonButtons slot="end">
             <IonButton onClick={() => history.push('/budget/edit')} aria-label="แก้ไขงบประมาณ">
-              <IonIcon icon={pencilOutline} slot="icon-only" />
+              <IonIcon aria-hidden="true" icon={pencilOutline} slot="icon-only" />
             </IonButton>
           </IonButtons>
         </IonToolbar>

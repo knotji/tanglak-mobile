@@ -57,7 +57,7 @@ const AccountsPage: React.FC = () => {
                   }}
                 >
                   <div className={`tl-icon-badge ${isCard ? 'tl-icon-badge--expense' : 'tl-icon-badge--transfer'}`}>
-                    <IonIcon icon={isCard ? cardOutline : walletOutline} />
+                    <IonIcon aria-hidden="true" icon={isCard ? cardOutline : walletOutline} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

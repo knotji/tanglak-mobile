@@ -112,7 +112,7 @@ const TodayPage: React.FC = () => {
                 className="tl-action-chip"
                 style={{ cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                <IonIcon icon={scanOutline} style={{ color: '#6558d3' }} />
+                <IonIcon aria-hidden="true" icon={scanOutline} style={{ color: '#6558d3' }} />
                 <span>สแกนสลิป</span>
               </button>
               <button
@@ -121,7 +121,7 @@ const TodayPage: React.FC = () => {
                 className="tl-action-chip"
                 style={{ cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                <IonIcon icon={cardOutline} style={{ color: '#24324a' }} />
+                <IonIcon aria-hidden="true" icon={cardOutline} style={{ color: '#24324a' }} />
                 <span>รายการทั้งหมด</span>
               </button>
               <button
@@ -130,7 +130,7 @@ const TodayPage: React.FC = () => {
                 className="tl-action-chip"
                 style={{ cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                <IonIcon icon={statsChartOutline} style={{ color: '#6558d3' }} />
+                <IonIcon aria-hidden="true" icon={statsChartOutline} style={{ color: '#6558d3' }} />
                 <span>ดูภาพรวม</span>
               </button>
             </div>

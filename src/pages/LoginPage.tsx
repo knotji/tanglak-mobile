@@ -83,7 +83,7 @@ const LoginPage: React.FC = () => {
                 <IonSpinner name="dots" />
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <IonIcon icon={logoGoogle} style={{ fontSize: 20, color: '#ea4335' }} />
+                  <IonIcon aria-hidden="true" icon={logoGoogle} style={{ fontSize: 20, color: '#ea4335' }} />
                   <span>เข้าสู่ระบบด้วย Google</span>
                 </div>
               )}

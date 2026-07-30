@@ -47,7 +47,7 @@ const SettingsPage: React.FC = () => {
 
         <div className="tl-card" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
           <div className="tl-icon-badge tl-icon-badge--income" style={{ width: 44, height: 44, fontSize: 20 }}>
-            <IonIcon icon={personOutline} />
+            <IonIcon aria-hidden="true" icon={personOutline} />
           </div>
           <div>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 700 }}>บัญชีผู้ใช้งาน</p>
@@ -60,7 +60,7 @@ const SettingsPage: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div className="tl-icon-badge tl-icon-badge--expense" style={{ width: 40, height: 40, fontSize: 18 }}>
-                <IonIcon icon={fingerPrintOutline} />
+                <IonIcon aria-hidden="true" icon={fingerPrintOutline} />
               </div>
               <div>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>ล็อกแอปด้วย Face ID / ลายนิ้วมือ</p>
@@ -101,7 +101,7 @@ const SettingsPage: React.FC = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <IonIcon icon={logOutOutline} style={{ fontSize: 18 }} />
+              <IonIcon aria-hidden="true" icon={logOutOutline} style={{ fontSize: 18 }} />
               <span>ออกจากระบบ</span>
             </div>
           </IonButton>
