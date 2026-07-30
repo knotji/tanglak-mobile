@@ -110,27 +110,27 @@ const TodayPage: React.FC = () => {
                 type="button"
                 onClick={() => router.push('/tabs/upload', 'forward', 'push')}
                 className="tl-action-chip"
-                style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                <IonIcon icon={scanOutline} style={{ color: '#4f46e5' }} />
+                <IonIcon icon={scanOutline} style={{ color: '#6558d3' }} />
                 <span>สแกนสลิป</span>
               </button>
               <button
                 type="button"
                 onClick={() => router.push('/tabs/transactions', 'forward', 'push')}
                 className="tl-action-chip"
-                style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                <IonIcon icon={cardOutline} style={{ color: '#0f172a' }} />
+                <IonIcon icon={cardOutline} style={{ color: '#24324a' }} />
                 <span>รายการทั้งหมด</span>
               </button>
               <button
                 type="button"
                 onClick={() => router.push('/overview', 'forward', 'push')}
                 className="tl-action-chip"
-                style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                <IonIcon icon={statsChartOutline} style={{ color: '#4f46e5' }} />
+                <IonIcon icon={statsChartOutline} style={{ color: '#6558d3' }} />
                 <span>ดูภาพรวม</span>
               </button>
             </div>

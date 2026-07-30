@@ -294,9 +294,9 @@ const BudgetEditPage: React.FC = () => {
             <button type="button" className="tl-tap-row" onClick={() => void handleOpenSuggestions()} style={{ marginTop: 12 }}>
               <div
                 className="tl-card"
-                style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)', borderColor: '#c7d2fe' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'linear-gradient(135deg, #fffefa 0%, #eeecff 100%)', borderColor: '#d9d3ff' }}
               >
-                <div className="tl-icon-badge tl-icon-badge--transfer" style={{ background: '#4f46e5', color: '#ffffff' }}>
+                <div className="tl-icon-badge tl-icon-badge--transfer" style={{ background: '#6558d3', color: '#ffffff' }}>
                   <IonIcon icon={sparklesOutline} />
                 </div>
                 <div style={{ flex: 1, textAlign: 'left' }}>
@@ -355,7 +355,7 @@ const BudgetEditPage: React.FC = () => {
                       <IonSelectOption key={option.id} value={option.id}>{option.label}</IonSelectOption>
                     ))}
                   </IonSelect>
-                  <IonButton disabled={!newCategoryId} onClick={() => void handleAddCategory()} style={{ '--border-radius': '999px', fontWeight: 700, '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)' }}>เพิ่ม</IonButton>
+                  <IonButton disabled={!newCategoryId} onClick={() => void handleAddCategory()} style={{ fontWeight: 700, '--background': 'linear-gradient(135deg, #24324a 0%, #443f78 100%)' }}>เพิ่ม</IonButton>
                 </div>
               )}
             </div>

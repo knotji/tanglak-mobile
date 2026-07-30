@@ -59,7 +59,7 @@ export const PrivacyBlurOverlay: React.FC = () => {
           width: 64,
           height: 64,
           borderRadius: 22,
-          background: 'linear-gradient(135deg, #4f46e5 0%, #312e81 100%)',
+          background: 'linear-gradient(135deg, #6558d3 0%, #443f78 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

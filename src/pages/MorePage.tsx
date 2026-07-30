@@ -1,5 +1,5 @@
 import { IonContent, IonIcon, IonPage } from '@ionic/react';
-import { cardOutline, chevronForwardOutline, settingsOutline, statsChartOutline, walletOutline } from 'ionicons/icons';
+import { cardOutline, settingsOutline, statsChartOutline, walletOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 
@@ -25,29 +25,21 @@ const MorePage: React.FC = () => {
     <IonPage>
       <IonContent className="ion-padding" fullscreen>
         <PageHeader title="เพิ่มเติม" subtitle="เมนูและการจัดการระบบ" />
-        <div className="tl-card" style={{ padding: '6px 16px', marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
-          {MENU_ITEMS.map((item, index) => (
+        <div className="tl-menu-grid">
+          {MENU_ITEMS.map((item) => (
             <button
               key={item.path}
               type="button"
-              className="tl-tap-row"
+              className="tl-menu-tile"
               onClick={() => history.push(item.path)}
-              style={{
-                padding: '14px 0',
-                borderTop: index === 0 ? 'none' : '1px solid var(--tl-border)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 14,
-              }}
             >
               <div className={`tl-icon-badge ${item.badgeClass}`}>
                 <IonIcon icon={item.icon} />
               </div>
-              <div style={{ flex: 1, textAlign: 'left' }}>
+              <div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--ion-text-color)' }}>{item.label}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--tl-text-secondary)', fontWeight: 500 }}>{item.subtitle}</p>
               </div>
-              <IonIcon icon={chevronForwardOutline} style={{ fontSize: 16, color: '#94a3b8', opacity: 0.7 }} />
             </button>
           ))}
         </div>

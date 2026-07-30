@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { IonButton, IonContent, IonIcon, IonInput, IonPage, IonSpinner, IonText } from '@ionic/react';
-import { walletOutline, logoGoogle } from 'ionicons/icons';
+import { logoGoogle } from 'ionicons/icons';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/lib/supabaseClient';
+import BrandMark from '@/components/BrandMark';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -52,31 +53,16 @@ const LoginPage: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px 20px calc(24px + env(safe-area-inset-bottom, 0px))', maxWidth: 440, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 20,
-                background: 'linear-gradient(135deg, #0f172a 0%, #4f46e5 100%)',
-                color: '#ffffff',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 10px 25px -5px rgba(79, 70, 229, 0.4)',
-                marginBottom: 16,
-              }}
-            >
-              <IonIcon icon={walletOutline} style={{ fontSize: 32 }} />
-            </div>
-            <p style={{ fontSize: 32, fontWeight: 800, color: 'var(--ion-color-primary)', margin: 0, letterSpacing: '-0.02em' }}>ตั้งหลัก</p>
+        <div className="tl-login-shell">
+          <div className="tl-login-intro">
+            <BrandMark size={72} />
+            <h1>ตั้งหลัก</h1>
             <p style={{ fontSize: 14, color: 'var(--tl-text-secondary)', marginTop: 6, fontWeight: 500 }}>
               เห็นเงินเข้าออกชัด วางแผนชีวิตได้ง่ายขึ้น
             </p>
           </div>
 
-          <div className="tl-card" style={{ padding: '24px 20px' }}>
+          <div className="tl-card tl-login-panel">
             <IonButton
               expand="block"
               fill="outline"
@@ -145,7 +131,7 @@ const LoginPage: React.FC = () => {
               onClick={handleSignIn}
               style={{
                 '--border-radius': 'var(--tl-radius-sm)',
-                '--background': 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)',
+                '--background': 'linear-gradient(135deg, #24324a 0%, #443f78 100%)',
                 '--box-shadow': '0 4px 14px rgba(15, 23, 42, 0.25)',
                 fontWeight: 700,
                 minHeight: 48,

@@ -1,6 +1,6 @@
 import { Redirect, Route } from 'react-router-dom';
 import { IonIcon, IonLabel, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs } from '@ionic/react';
-import { cardOutline, ellipsisHorizontalCircleOutline, scanOutline, todayOutline } from 'ionicons/icons';
+import { listOutline, gridOutline, scanOutline, todayOutline } from 'ionicons/icons';
 import TodayPage from '@/pages/TodayPage';
 import TransactionsPage from '@/pages/TransactionsPage';
 import UploadPage from '@/pages/UploadPage';
@@ -17,9 +17,9 @@ const MainTabs: React.FC = () => (
     </IonRouterOutlet>
     <IonTabBar slot="bottom" className="main-tab-bar">
       <IonTabButton tab="today" href="/tabs/today"><IonIcon icon={todayOutline} /><IonLabel>วันนี้</IonLabel></IonTabButton>
-      <IonTabButton tab="transactions" href="/tabs/transactions"><IonIcon icon={cardOutline} /><IonLabel>รายการ</IonLabel></IonTabButton>
+      <IonTabButton tab="transactions" href="/tabs/transactions"><IonIcon icon={listOutline} /><IonLabel>รายการ</IonLabel></IonTabButton>
       <IonTabButton tab="upload" href="/tabs/upload"><IonIcon icon={scanOutline} /><IonLabel>สแกนสลิป</IonLabel></IonTabButton>
-      <IonTabButton tab="more" href="/tabs/more"><IonIcon icon={ellipsisHorizontalCircleOutline} /><IonLabel>เพิ่มเติม</IonLabel></IonTabButton>
+      <IonTabButton tab="more" href="/tabs/more"><IonIcon icon={gridOutline} /><IonLabel>เมนู</IonLabel></IonTabButton>
     </IonTabBar>
   </IonTabs>
 );

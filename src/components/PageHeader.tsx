@@ -6,24 +6,23 @@ const PageHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, sub
   const isPrivacy = usePrivacyMode();
 
   return (
-    <header className="tl-page-header" style={{ position: 'relative' }}>
+    <header className="tl-page-header">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p className="tl-brand">ตั้งหลัก</p>
         <button
           type="button"
           onClick={() => togglePrivacyMode()}
           aria-label={isPrivacy ? 'แสดงตัวเลข' : 'ซ่อนตัวเลข'}
+          className="tl-privacy-button"
           style={{
-            background: 'rgba(15, 23, 42, 0.05)',
-            border: 'none',
             borderRadius: 999,
-            padding: '6px 12px',
+            padding: '7px 12px',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
             fontSize: 12,
             fontWeight: 600,
-            color: isPrivacy ? '#6366f1' : '#64748b',
+            color: isPrivacy ? '#6558d3' : '#687083',
             cursor: 'pointer',
           }}
         >
