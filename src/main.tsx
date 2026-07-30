@@ -5,11 +5,16 @@ import '@fontsource/noto-sans-thai/500.css';
 import '@fontsource/noto-sans-thai/600.css';
 import '@fontsource/noto-sans-thai/700.css';
 import App from './App';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
+import { installGlobalErrorMonitoring } from '@/lib/errorMonitoring';
 
 const container = document.getElementById('root');
 const root = createRoot(container!);
+installGlobalErrorMonitoring();
 root.render(
   <React.StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </React.StrictMode>
 );
