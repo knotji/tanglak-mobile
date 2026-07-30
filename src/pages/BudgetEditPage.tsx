@@ -279,7 +279,7 @@ const BudgetEditPage: React.FC = () => {
 
         {!loading && (
           <>
-            <div className="tl-card">
+            <div className="tl-card tl-income-card">
               <FieldLabel>รายรับเดือนนี้ (บาท)</FieldLabel>
               <IonInput
                 fill="outline"
@@ -291,13 +291,13 @@ const BudgetEditPage: React.FC = () => {
               />
             </div>
 
-            <button type="button" className="tl-tap-row" onClick={() => void handleOpenSuggestions()} style={{ marginTop: 12 }}>
+            <button type="button" className="tl-tap-row tl-ai-budget-entry" onClick={() => void handleOpenSuggestions()}>
               <div
                 className="tl-card"
                 style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'linear-gradient(135deg, #fffefa 0%, #eeecff 100%)', borderColor: '#d9d3ff' }}
               >
                 <div className="tl-icon-badge tl-icon-badge--transfer" style={{ background: '#6558d3', color: '#ffffff' }}>
-                  <IonIcon icon={sparklesOutline} />
+                  <IonIcon aria-hidden="true" icon={sparklesOutline} />
                 </div>
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: 'var(--ion-text-color)' }}>ให้ AI ช่วยจัดงบ</p>
@@ -308,7 +308,7 @@ const BudgetEditPage: React.FC = () => {
               </div>
             </button>
 
-            <div className="tl-card" style={{ marginTop: 12, marginBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))' }}>
+            <div className="tl-card tl-budget-category-editor">
               <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700 }}>งบต่อหมวดหมู่</p>
               {categories.length === 0 && (
                 <p style={{ fontSize: 13, color: 'var(--tl-text-secondary)' }}>ยังไม่มีหมวดหมู่ที่ตั้งงบ — เพิ่มด้านล่าง</p>
@@ -336,7 +336,7 @@ const BudgetEditPage: React.FC = () => {
                     onIonBlur={(e) => void handleCategoryAmountBlur(category.id, (e.target as HTMLIonInputElement).value as string)}
                   />
                   <IonButton fill="clear" color="danger" onClick={() => setConfirmDeleteId(category.id)} aria-label={`ลบหมวดหมู่ ${category.label}`}>
-                    <IonIcon icon={trashOutline} slot="icon-only" />
+                    <IonIcon aria-hidden="true" icon={trashOutline} slot="icon-only" />
                   </IonButton>
                 </div>
               ))}
@@ -374,7 +374,7 @@ const BudgetEditPage: React.FC = () => {
         <IonToast isOpen={error !== ''} message={error} duration={3000} color="danger" onDidDismiss={() => setError('')} />
 
         <IonModal className="tl-compact-modal" isOpen={suggestionOpen} onDidDismiss={() => setSuggestionOpen(false)}>
-          <div style={{ padding: '20px 20px 24px', maxHeight: '80vh', overflowY: 'auto' }}>
+          <div className="tl-ai-plan-sheet">
             <div style={{ width: 36, height: 4, borderRadius: 999, background: '#cbd5e1', margin: '0 auto 14px' }} />
             <p style={{ margin: '0 0 4px', textAlign: 'center', fontSize: 16, fontWeight: 800, color: '#0f172a' }}>แผนงบจาก AI</p>
 

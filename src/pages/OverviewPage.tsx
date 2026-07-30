@@ -127,13 +127,16 @@ const OverviewPage: React.FC = () => {
               </p>
             </div>
 
+            <p className="tl-section-title">ค่าใช้จ่ายตามหมวด</p>
             {/* Category Donut Breakdown */}
             <CategoryDonutChart items={donutItems} totalSatang={totalExpenseSatang} />
 
+            <p className="tl-section-title">กระแสเงินย้อนหลัง</p>
             {/* Cash Flow Historical Trend */}
             <CashFlowBarChart data={cashFlowHistory} />
 
-            <div className="tl-card" style={{ padding: '8px 18px', marginTop: 14, marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
+            <p className="tl-section-title">สรุปเดือนนี้</p>
+            <div className="tl-card tl-cashflow-summary">
               <FlowRow label="รายรับวางแผนไว้" amountSatang={snapshot.plannedIncomeSatang} direction="in" />
               <div style={{ borderTop: '1px solid var(--tl-border)' }}>
                 <FlowRow label="รายจ่ายรวม" amountSatang={snapshot.totals.expenseSatang} direction="out" />

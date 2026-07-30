@@ -285,9 +285,9 @@ const UploadPage: React.FC = () => {
         <PageHeader title="สแกนสลิป" subtitle="ให้ AI อ่านข้อมูล แล้วตรวจสอบก่อนบันทึกทุกครั้ง" />
 
         {step === 'pick' && (
-          <>
+          <div className="tl-scan-pickers">
             <label className="upload-picker">
-              <IonIcon icon={cameraOutline} style={{ fontSize: 32 }} />
+              <IonIcon aria-hidden="true" icon={cameraOutline} style={{ fontSize: 32 }} />
               <p>ถ่ายรูปสลิป</p>
               <input
                 type="file"
@@ -301,8 +301,8 @@ const UploadPage: React.FC = () => {
                 }}
               />
             </label>
-            <label className="upload-picker" style={{ marginTop: 12 }}>
-              <IonIcon icon={imagesOutline} style={{ fontSize: 32 }} />
+            <label className="upload-picker">
+              <IonIcon aria-hidden="true" icon={imagesOutline} style={{ fontSize: 32 }} />
               <p>เลือกหลายรูปจากคลังภาพ</p>
               <input
                 type="file"
@@ -326,7 +326,7 @@ const UploadPage: React.FC = () => {
                 </IonText>
               )}
             </div>
-          </>
+          </div>
         )}
 
         {step === 'extracting' && (
@@ -355,7 +355,7 @@ const UploadPage: React.FC = () => {
                   color: '#e11d48',
                 }}
               >
-                <IonIcon icon={warningOutline} style={{ fontSize: 22, flexShrink: 0 }} />
+                <IonIcon aria-hidden="true" icon={warningOutline} style={{ fontSize: 22, flexShrink: 0 }} />
                 <div>
                   <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>⚠️ ตรวจพบสลิปนี้ในระบบแล้ว</p>
                   <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9f1239' }}>
@@ -365,7 +365,7 @@ const UploadPage: React.FC = () => {
               </div>
             )}
 
-            <div className="tl-card">
+            <div className="tl-card tl-review-card">
               {isBatch && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   {previewUrl && (
@@ -442,7 +442,7 @@ const UploadPage: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: '#475569' }}>
-                    <IonIcon icon={sparklesOutline} style={{ fontSize: 15, color: '#6366f1' }} />
+                    <IonIcon aria-hidden="true" icon={sparklesOutline} style={{ fontSize: 15, color: '#6366f1' }} />
                     <span style={{ fontSize: 12, fontWeight: 700 }}>รายละเอียดสกัดโดย AI</span>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -482,7 +482,7 @@ const UploadPage: React.FC = () => {
               </IonText>
             )}
 
-            <div style={{ marginTop: 24, paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}>
+            <div className="tl-form-actions">
               <IonButton
                 expand="block"
                 disabled={step === 'saving'}
@@ -533,7 +533,7 @@ const UploadPage: React.FC = () => {
         {step === 'saved' && (
           <div style={{ paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}>
             <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
-              <IonIcon icon={checkmarkCircle} color="success" style={{ fontSize: 48 }} />
+              <IonIcon aria-hidden="true" icon={checkmarkCircle} color="success" style={{ fontSize: 48 }} />
               <p style={{ fontWeight: 700, marginTop: 12 }}>
                 {savedCount > 1 || notSavedCount > 0 || skippedDuplicateCount > 0
                   ? `บันทึกแล้ว ${savedCount} รายการ${skippedDuplicateCount > 0 ? ` · ข้ามสลิปซ้ำ ${skippedDuplicateCount} รายการ` : ''}${notSavedCount > 0 ? ` · ไม่ได้บันทึก ${notSavedCount} รายการ` : ''}`

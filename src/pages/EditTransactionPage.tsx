@@ -153,7 +153,7 @@ const EditTransactionPage: React.FC = () => {
         )}
 
         {draft && (
-          <div style={{ maxWidth: 440, margin: '0 auto' }}>
+          <div className="tl-transaction-editor">
             {/* Type Selector Segment */}
             <div style={{ marginBottom: 16 }}>
               <IonSegment value={draft.type} onIonChange={(e) => setDraft({ ...draft, type: e.detail.value as EditableType, categoryId: '' })}>
@@ -166,7 +166,7 @@ const EditTransactionPage: React.FC = () => {
 
             {/* Frameless Hero Amount Display Card */}
             <div
-              className="tl-card"
+              className="tl-card tl-amount-editor"
               style={{
                 padding: '24px 20px',
                 textAlign: 'center',
@@ -191,7 +191,7 @@ const EditTransactionPage: React.FC = () => {
                   marginBottom: 10,
                 }}
               >
-                <IonIcon icon={walletOutline} style={{ fontSize: 14 }} />
+                <IonIcon aria-hidden="true" icon={walletOutline} style={{ fontSize: 14 }} />
                 <span>ยอดเงิน{TYPE_THEME[draft.type].label}</span>
               </span>
 
@@ -222,7 +222,7 @@ const EditTransactionPage: React.FC = () => {
 
             {/* iOS Inset Grouped List Form Container */}
             <div
-              className="tl-card"
+              className="tl-card tl-transaction-fields"
               style={{
                 padding: '0 16px',
                 borderRadius: 20,
@@ -235,7 +235,7 @@ const EditTransactionPage: React.FC = () => {
               <div style={{ padding: '14px 0', borderBottom: '1px solid #f1f5f9' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                   <div className="tl-icon-badge tl-icon-badge--expense" style={{ width: 34, height: 34, fontSize: 16 }}>
-                    <IonIcon icon={storefrontOutline} />
+                    <IonIcon aria-hidden="true" icon={storefrontOutline} />
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>ร้านค้า / ผู้รับเงิน</span>
                 </div>
@@ -266,7 +266,7 @@ const EditTransactionPage: React.FC = () => {
                 <div style={{ padding: '14px 0', borderBottom: '1px solid #f1f5f9' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                     <div className="tl-icon-badge tl-icon-badge--transfer" style={{ width: 34, height: 34, fontSize: 16 }}>
-                      <IonIcon icon={pricetagOutline} />
+                      <IonIcon aria-hidden="true" icon={pricetagOutline} />
                     </div>
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>หมวดหมู่</span>
                   </div>
@@ -296,7 +296,7 @@ const EditTransactionPage: React.FC = () => {
               <div style={{ padding: '14px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                   <div className="tl-icon-badge tl-icon-badge--income" style={{ width: 34, height: 34, fontSize: 16 }}>
-                    <IonIcon icon={pricetagOutline} />
+                    <IonIcon aria-hidden="true" icon={pricetagOutline} />
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>แท็ก / โน้ตกำกับ</span>
                 </div>
@@ -325,7 +325,7 @@ const EditTransactionPage: React.FC = () => {
             )}
 
             {/* Actions Footer */}
-            <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}>
+            <div className="tl-form-actions">
               <IonButton
                 expand="block"
                 disabled={busy}
@@ -343,7 +343,7 @@ const EditTransactionPage: React.FC = () => {
                   <IonSpinner name="dots" />
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <IonIcon icon={checkmarkCircleOutline} style={{ fontSize: 20 }} />
+                    <IonIcon aria-hidden="true" icon={checkmarkCircleOutline} style={{ fontSize: 20 }} />
                     <span>บันทึกการแก้ไข</span>
                   </div>
                 )}
@@ -368,7 +368,7 @@ const EditTransactionPage: React.FC = () => {
                   cursor: 'pointer',
                 }}
               >
-                <IonIcon icon={trashOutline} style={{ fontSize: 16 }} />
+                <IonIcon aria-hidden="true" icon={trashOutline} style={{ fontSize: 16 }} />
                 <span>ลบรายการนี้</span>
               </button>
             </div>
