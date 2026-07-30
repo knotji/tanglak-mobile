@@ -37,8 +37,8 @@ const MorePage: React.FC = () => {
                 <IonIcon aria-hidden="true" icon={item.icon} />
               </div>
               <div>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--ion-text-color)' }}>{item.label}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--tl-text-secondary)', fontWeight: 500 }}>{item.subtitle}</p>
+                <p className="tl-menu-tile__title">{item.label}</p>
+                <p className="tl-menu-tile__subtitle">{item.subtitle}</p>
               </div>
             </button>
           ))}

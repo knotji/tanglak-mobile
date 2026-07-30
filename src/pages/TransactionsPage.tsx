@@ -13,25 +13,11 @@ const MonthPicker: React.FC<{ month: string; onChange: (month: string) => void }
   const label = formatThaiMonthYearLabel(month) ?? month;
 
   return (
-    <div className="tl-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', marginBottom: 14 }}>
+    <div className="tl-card tl-month-picker">
       <IonButton fill="clear" onClick={() => onChange(shiftBangkokMonth(month, -1))} aria-label="เดือนก่อนหน้า" style={{ '--color': '#4f46e5' }}>
         <IonIcon aria-hidden="true" icon={chevronBackOutline} slot="icon-only" />
       </IonButton>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        style={{
-          background: 'var(--tl-primary-soft)',
-          border: '1px solid var(--tl-border)',
-          borderRadius: 999,
-          fontFamily: 'inherit',
-          fontSize: 14.5,
-          fontWeight: 700,
-          color: 'var(--ion-text-color)',
-          padding: '8px 16px',
-          cursor: 'pointer',
-        }}
-      >
+      <button type="button" className="tl-month-picker__label" onClick={() => setOpen(true)}>
         {label}
       </button>
       <IonButton fill="clear" onClick={() => onChange(shiftBangkokMonth(month, 1))} aria-label="เดือนถัดไป" style={{ '--color': '#4f46e5' }}>
@@ -39,7 +25,7 @@ const MonthPicker: React.FC<{ month: string; onChange: (month: string) => void }
       </IonButton>
 
       <IonModal className="tl-compact-modal" isOpen={open} onDidDismiss={() => setOpen(false)}>
-        <div style={{ padding: 16 }}>
+        <div className="tl-month-sheet">
           <IonDatetime
             presentation="month-year"
             locale="th-TH-u-ca-gregory"

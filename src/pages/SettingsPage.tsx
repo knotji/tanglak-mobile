@@ -45,26 +45,25 @@ const SettingsPage: React.FC = () => {
       <IonContent className="ion-padding" fullscreen>
         <PageHeader title="ตั้งค่า" subtitle="บัญชีและความปลอดภัย" />
 
-        <div className="tl-card" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-          <div className="tl-icon-badge tl-icon-badge--income" style={{ width: 44, height: 44, fontSize: 20 }}>
-            <IonIcon aria-hidden="true" icon={personOutline} />
+        <div className="tl-settings-stack">
+          <div className="tl-card tl-profile-card">
+            <div className="tl-icon-badge tl-icon-badge--income">
+              <IonIcon aria-hidden="true" icon={personOutline} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p className="tl-profile-card__label">บัญชีผู้ใช้งาน</p>
+              <p className="tl-profile-card__email">{email ?? '—'}</p>
+            </div>
           </div>
-          <div>
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 700 }}>บัญชีผู้ใช้งาน</p>
-            <p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700 }}>{email ?? '—'}</p>
-          </div>
-        </div>
 
-        {/* Biometric App Lock Toggle */}
-        <div className="tl-card" style={{ marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="tl-icon-badge tl-icon-badge--expense" style={{ width: 40, height: 40, fontSize: 18 }}>
+          <div className="tl-card tl-setting-row">
+            <div className="tl-setting-row__copy">
+              <div className="tl-icon-badge tl-icon-badge--expense">
                 <IonIcon aria-hidden="true" icon={fingerPrintOutline} />
               </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>ล็อกแอปด้วย Face ID / ลายนิ้วมือ</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)' }}>
+              <div style={{ minWidth: 0 }}>
+                <p className="tl-setting-row__title">ล็อกแอปด้วย Face ID / ลายนิ้วมือ</p>
+                <p className="tl-setting-row__hint">
                   ยืนยันตัวตนทุกครั้งเมื่อเปิดแอปการเงิน
                 </p>
               </div>
@@ -79,13 +78,11 @@ const SettingsPage: React.FC = () => {
               />
             )}
           </div>
+
+          {notice && <p className="tl-inline-notice" role="status">{notice}</p>}
         </div>
 
-        {notice && (
-          <p style={{ margin: '10px 0 0', fontSize: 12.5, color: '#4f46e5', fontWeight: 600 }}>{notice}</p>
-        )}
-
-        <div style={{ marginTop: 24, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="tl-danger-zone">
           <IonButton
             expand="block"
             fill="outline"

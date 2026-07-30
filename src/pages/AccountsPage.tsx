@@ -42,60 +42,29 @@ const AccountsPage: React.FC = () => {
         )}
 
         {accounts && accounts.length > 0 && (
-          <div className="tl-card" style={{ padding: '6px 16px', marginBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
-            {accounts.map((account, index) => {
+          <div className="tl-card tl-list-card">
+            {accounts.map((account) => {
               const isCard = account.accountType.includes('card');
               return (
-                <div
-                  key={account.id}
-                  style={{
-                    padding: '14px 0',
-                    borderTop: index === 0 ? 'none' : '1px solid var(--tl-border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                  }}
-                >
+                <div key={account.id} className="tl-list-row">
                   <div className={`tl-icon-badge ${isCard ? 'tl-icon-badge--expense' : 'tl-icon-badge--transfer'}`}>
                     <IonIcon aria-hidden="true" icon={isCard ? cardOutline : walletOutline} />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="tl-list-row__body">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--ion-text-color)' }}>{account.name}</p>
+                      <p className="tl-list-row__title">{account.name}</p>
                       {account.isDefault && (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: 999,
-                            background: '#e0e7ff',
-                            color: '#3730a3',
-                          }}
-                        >
-                          ค่าเริ่มต้น
-                        </span>
+                        <span className="tl-status-badge tl-status-badge--accent">ค่าเริ่มต้น</span>
                       )}
                     </div>
-                    <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--tl-text-secondary)', fontWeight: 500 }}>
+                    <p className="tl-list-row__meta">
                       {ACCOUNT_TYPE_LABELS[account.accountType]}
                       {account.institutionName ? ` · ${account.institutionName}` : ''}
                       {` · ${maskLastFour(account.lastFour)}`}
                     </p>
                   </div>
                   {!account.isActive && (
-                    <span
-                      style={{
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        padding: '3px 8px',
-                        borderRadius: 999,
-                        background: '#f1f5f9',
-                        color: '#64748b',
-                      }}
-                    >
-                      ปิดใช้งาน
-                    </span>
+                    <span className="tl-status-badge">ปิดใช้งาน</span>
                   )}
                 </div>
               );

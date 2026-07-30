@@ -54,6 +54,8 @@
   --tl-radius-sm: 16px;
   --tl-card-shadow: 0 10px 30px -20px rgba(36, 50, 74, 0.32), 0 2px 8px rgba(36, 50, 74, 0.035);
   --tl-page-gutter: clamp(16px, 4.5vw, 24px);
+  --tl-section-gap: 18px;
+  --tl-touch-size: 48px;
 }
 
 body {
@@ -96,9 +98,19 @@ ion-header ion-button {
 
 ion-button {
   --border-radius: 16px;
-  min-height: 46px;
+  min-height: var(--tl-touch-size);
   font-weight: 750;
   letter-spacing: -.01em;
+}
+
+ion-button::part(native) {
+  padding-inline: 18px;
+}
+
+ion-toggle {
+  --handle-width: 24px;
+  --handle-height: 24px;
+  --track-background-checked: var(--tl-focus-ring);
 }
 
 ion-toast {
@@ -218,7 +230,7 @@ ion-header ion-toolbar > ion-button {
 /* --- Shared page-content building blocks --- */
 
 .tl-page-header {
-  padding: max(12px, env(safe-area-inset-top)) 0 22px;
+  padding: max(14px, env(safe-area-inset-top)) 0 20px;
   animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .tl-page-header .tl-brand {
@@ -248,7 +260,7 @@ ion-header ion-toolbar > ion-button {
   background: var(--tl-surface);
   border: 1px solid var(--tl-border);
   border-radius: var(--tl-radius);
-  padding: 20px;
+  padding: clamp(18px, 4.8vw, 22px);
   box-shadow: var(--tl-card-shadow);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
   animation: fadeIn 0.35s ease;
@@ -383,7 +395,7 @@ ion-header ion-toolbar > ion-button {
   margin-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 .tl-menu-tile {
-  min-height: 168px;
+  min-height: 156px;
   padding: 18px;
   background: rgba(255, 254, 250, .86);
   border: 1px solid var(--tl-border);
@@ -392,6 +404,20 @@ ion-header ion-toolbar > ion-button {
   text-align: left;
 }
 .tl-menu-tile .tl-icon-badge { margin-bottom: 22px; }
+.tl-menu-tile__title {
+  margin: 0;
+  color: var(--ion-text-color);
+  font-size: 15px;
+  font-weight: 780;
+  letter-spacing: -.015em;
+}
+.tl-menu-tile__subtitle {
+  margin: 4px 0 0;
+  color: var(--tl-text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.45;
+}
 .tl-menu-tile:active { transform: scale(.98); }
 
 .tl-login-shell {
@@ -510,6 +536,200 @@ ion-header ion-toolbar > ion-button {
   font-size: 20px;
   transition: transform 0.15s ease;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.tl-list-card {
+  padding: 5px 16px;
+  margin-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+}
+.tl-list-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 12px 0;
+}
+.tl-list-row + .tl-list-row {
+  border-top: 1px solid var(--tl-border);
+}
+.tl-list-row__body {
+  min-width: 0;
+  flex: 1;
+}
+.tl-list-row__title {
+  margin: 0;
+  color: var(--ion-text-color);
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+.tl-list-row__meta {
+  margin: 3px 0 0;
+  color: var(--tl-text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.tl-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--tl-primary-soft);
+  color: #526079;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.tl-status-badge--accent {
+  background: var(--tl-accent-soft);
+  color: #4f46a5;
+}
+
+.tl-settings-stack {
+  display: grid;
+  gap: 12px;
+}
+.tl-profile-card,
+.tl-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.tl-setting-row {
+  justify-content: space-between;
+}
+.tl-setting-row__copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+.tl-setting-row__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+.tl-setting-row__hint,
+.tl-profile-card__label {
+  margin: 2px 0 0;
+  color: var(--tl-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.tl-profile-card__email {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  font-weight: 750;
+}
+.tl-inline-notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--tl-accent-soft);
+  color: #4f46a5;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.tl-danger-zone {
+  margin-top: 20px;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+.tl-month-picker {
+  display: grid;
+  grid-template-columns: var(--tl-touch-size) 1fr var(--tl-touch-size);
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  margin-bottom: 14px;
+}
+.tl-month-picker__label {
+  min-height: 42px;
+  border: 1px solid var(--tl-border);
+  border-radius: 14px;
+  background: var(--tl-primary-soft);
+  color: var(--ion-text-color);
+  font: 750 14.5px/1 var(--ion-font-family);
+  cursor: pointer;
+}
+.tl-month-sheet {
+  padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+}
+.tl-transaction-group {
+  padding: 4px 16px;
+}
+.tl-transaction-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  border-bottom: 1px solid var(--tl-border);
+  color: #526079;
+  font-size: 12.5px;
+  font-weight: 750;
+}
+.tl-transaction-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 11px 0;
+}
+.tl-transaction-row__body {
+  min-width: 0;
+  flex: 1;
+}
+.tl-transaction-row__title {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ion-text-color);
+  font-size: 14.5px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tl-transaction-row__meta {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--tl-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tl-transaction-row__chevron {
+  flex-shrink: 0;
+  color: #94a3b8;
+  font-size: 16px;
+  opacity: .65;
+}
+
+@media (max-width: 370px) {
+  .tl-page-header h1 { font-size: 29px; }
+  .tl-menu-grid { grid-template-columns: 1fr; }
+  .tl-menu-tile {
+    display: flex;
+    min-height: 112px;
+    align-items: center;
+    gap: 16px;
+  }
+  .tl-menu-tile .tl-icon-badge { margin-bottom: 0; }
+  .tl-setting-row { align-items: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }
 
 .tl-icon-badge--income {

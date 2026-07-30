@@ -45,23 +45,23 @@ const TransactionRow: React.FC<{ transaction: Transaction }> = ({ transaction })
   const isPrivacy = usePrivacyMode();
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
+    <div className="tl-transaction-row">
       <div className={`tl-icon-badge ${BADGE_CLASS[transaction.type]}`}>
         <IonIcon aria-hidden="true" icon={TYPE_ICON[transaction.type]} />
       </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <p style={{ margin: 0, fontWeight: 700, fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--ion-text-color)' }}>
+      <div className="tl-transaction-row__body">
+        <p className="tl-transaction-row__title">
           {transaction.merchant || transaction.categoryLabel || TYPE_LABEL[transaction.type]}
         </p>
-        <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--tl-text-secondary)', fontWeight: 500 }}>
+        <p className="tl-transaction-row__meta">
           {time ?? transaction.occurredAt}
           {transaction.categoryLabel && transaction.merchant ? ` · ${transaction.categoryLabel}` : ''}
         </p>
       </div>
-      <span className={`tl-amount tl-amount--${tone}`} style={{ fontSize: 15, fontWeight: 700 }}>
+      <span className={`tl-amount tl-amount--${tone}`} style={{ fontSize: 15 }}>
         {maskAmount(formatTHB(signedSatang, { showPositiveSign: isIncoming }), isPrivacy)}
       </span>
-      <IonIcon aria-hidden="true" icon={chevronForwardOutline} style={{ fontSize: 16, flexShrink: 0, color: '#94a3b8', opacity: 0.7 }} />
+      <IonIcon aria-hidden="true" className="tl-transaction-row__chevron" icon={chevronForwardOutline} />
     </div>
   );
 };

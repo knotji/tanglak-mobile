@@ -53,20 +53,12 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
         const net = dayNetSatang(group.transactions);
         const label = formatThaiDayMonthLabel(group.dateKey) ?? group.dateKey;
         return (
-          <div key={group.dateKey} className="tl-card" style={{ padding: '4px 16px' }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px 0',
-                borderBottom: '1px solid var(--tl-border)',
-              }}
-            >
-              <span style={{ fontSize: 13, fontWeight: 700 }}>
+          <div key={group.dateKey} className="tl-card tl-transaction-group">
+            <div className="tl-transaction-group__header">
+              <span>
                 {group.dateKey === todayDateKey ? `วันนี้ · ${label}` : label}
               </span>
-              <span className={`tl-amount ${net < 0 ? 'tl-amount--expense' : ''}`} style={{ fontSize: 13 }}>
+              <span className={`tl-amount ${net < 0 ? 'tl-amount--expense' : ''}`}>
                 {formatTHB(net, { showPositiveSign: net >= 0 })}
               </span>
             </div>
