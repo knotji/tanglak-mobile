@@ -79,6 +79,7 @@ Deno.serve(async (request) => {
     const categoryLabel = typeof body.categoryLabel === 'string' && body.categoryLabel.trim() ? body.categoryLabel.trim().slice(0, 100) : null;
     const paymentMethod = typeof body.paymentMethod === 'string' && body.paymentMethod.trim() ? body.paymentMethod.trim().slice(0, 100) : null;
     const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim().slice(0, 1000) : null;
+    const source = body.source === 'ai_extraction' ? 'ai_extraction' : 'manual';
 
     if (id) {
       const { data: existing, error: readError } = await supabase
@@ -131,7 +132,7 @@ Deno.serve(async (request) => {
         category_label: categoryLabel,
         payment_method: paymentMethod,
         note,
-        source: 'ai_extraction',
+        source,
       })
       .select('id, type, amount_satang, occurred_at, merchant, category_label')
       .single();

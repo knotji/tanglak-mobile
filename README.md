@@ -51,7 +51,7 @@ Historical rows whose backend type is `debt_payment` remain readable and deletab
 - Use Gregorian years in all displayed dates.
 - Keep money as integer satang in code and the database. Convert only at input/output boundaries.
 - Never fabricate missing financial data. Unknown income, date, or amount must stay empty or zero and be visible to the user.
-- Scanned data must be reviewed before saving unless the user explicitly enables auto-save.
+- Scanned data is always reviewed before saving; selecting an image never writes a transaction by itself.
 - AI budget plans are suggestions. The user chooses categories and confirms the plan before budget rows are created or replaced.
 
 ## Routes

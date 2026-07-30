@@ -33,6 +33,7 @@ interface DraftForm {
   merchant: string;
   datetimeLocal: string;
   categoryId: string;
+  source: 'manual' | 'ai_extraction';
   isDuplicate?: boolean;
   refNo?: string;
   bankChannel?: string;
@@ -68,6 +69,7 @@ function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
     merchant,
     datetimeLocal: result.transaction?.occurredAt ? isoInstantToBangkokDatetimeLocal(result.transaction.occurredAt) : '',
     categoryId,
+    source: 'ai_extraction',
     refNo: result.transaction?.refNo,
     bankChannel: result.transaction?.bankChannel ?? result.transaction?.paymentMethod,
     senderName: result.transaction?.senderName,
@@ -77,7 +79,14 @@ function draftFromExtraction(result: ExtractedFinancialDocument): DraftForm {
 }
 
 function emptyDraft(): DraftForm {
-  return { type: 'expense', amount: '', merchant: '', datetimeLocal: nowBangkokDatetimeLocal(), categoryId: '' };
+  return {
+    type: 'expense',
+    amount: '',
+    merchant: '',
+    datetimeLocal: nowBangkokDatetimeLocal(),
+    categoryId: '',
+    source: 'manual',
+  };
 }
 
 const UploadPage: React.FC = () => {
@@ -85,7 +94,6 @@ const UploadPage: React.FC = () => {
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
   const [extractProgress, setExtractProgress] = useState({ done: 0, total: 0 });
-  const [saveProgress, setSaveProgress] = useState({ done: 0, total: 0 });
   const [savedCount, setSavedCount] = useState(0);
   const [notSavedCount, setNotSavedCount] = useState(0);
   const [skippedDuplicateCount, setSkippedDuplicateCount] = useState(0);
@@ -153,17 +161,18 @@ const UploadPage: React.FC = () => {
     if (!occurredAt) return { kind: 'incomplete' };
 
     const amountSatang = Math.round(amountNumber * 100);
-    try {
-      const existing = await checkDuplicateTransaction({ amountSatang, occurredAt });
-      if (existing) {
-        setSkippedDuplicateCount((c) => c + 1);
-        return { kind: 'duplicate' };
+    if (!entryDraft.isDuplicate) {
+      try {
+        const existing = await checkDuplicateTransaction({ amountSatang, occurredAt });
+        if (existing) {
+          return { kind: 'duplicate' };
+        }
+      } catch (cause) {
+        // Don't silently treat "couldn't check for a duplicate" as "no duplicate" --
+        // that would disable the app's only anti-double-save guard exactly when the
+        // network is flaky, which is also when a retry-tap is most likely.
+        return { kind: 'error', message: cause instanceof Error ? cause.message : 'ตรวจสอบรายการซ้ำไม่สำเร็จ' };
       }
-    } catch (cause) {
-      // Don't silently treat "couldn't check for a duplicate" as "no duplicate" --
-      // that would disable the app's only anti-double-save guard exactly when the
-      // network is flaky, which is also when a retry-tap is most likely.
-      return { kind: 'error', message: cause instanceof Error ? cause.message : 'ตรวจสอบรายการซ้ำไม่สำเร็จ' };
     }
 
     try {
@@ -174,6 +183,7 @@ const UploadPage: React.FC = () => {
         occurredAt,
         merchant: entryDraft.merchant || undefined,
         categoryLabel: category?.label,
+        source: entryDraft.source,
       };
       await saveTransaction(input);
       if (entryDraft.merchant && entryDraft.categoryId) {
@@ -183,14 +193,6 @@ const UploadPage: React.FC = () => {
     } catch (cause) {
       return { kind: 'error', message: cause instanceof Error ? cause.message : 'บันทึกรายการไม่สำเร็จ' };
     }
-  };
-
-  const saveEntry = async (entry: QueueEntry): Promise<SaveEntryResult> => {
-    const result = await saveDraftEntry(entry.draft);
-    if ((result.kind === 'saved' || result.kind === 'duplicate') && entry.previewUrl) {
-      URL.revokeObjectURL(entry.previewUrl);
-    }
-    return result;
   };
 
   const handleFiles = async (files: File[]) => {
@@ -220,38 +222,9 @@ const UploadPage: React.FC = () => {
       return;
     }
 
-    setStep('saving');
-    setSaveProgress({ done: 0, total: entries.length });
-    let saved = 0;
-    const incompleteEntries: QueueEntry[] = [];
-    const errorMessages: string[] = [];
-
-    for (let i = 0; i < entries.length; i++) {
-      const res = await saveEntry(entries[i]);
-      if (res.kind === 'saved') {
-        saved += 1;
-      } else if (res.kind === 'duplicate') {
-        // duplicate skipped, already counted
-      } else if (res.kind === 'error') {
-        failCount += 1;
-        if (!errorMessages.includes(res.message)) errorMessages.push(res.message);
-      } else {
-        incompleteEntries.push(entries[i]);
-      }
-      setSaveProgress({ done: i + 1, total: entries.length });
-    }
-
-    setSavedCount(saved);
-    setSaveErrorMessages(errorMessages);
-    if (incompleteEntries.length === 0) {
-      setNotSavedCount(failCount);
-      setQueue([]);
-      setStep('saved');
-    } else {
-      setNotSavedCount(failCount);
-      setQueue(incompleteEntries);
-      enterQueueItem(0, incompleteEntries);
-    }
+    setNotSavedCount(failCount);
+    setQueue(entries);
+    enterQueueItem(0, entries);
   };
 
   const handleManualEntry = () => {
@@ -276,6 +249,7 @@ const UploadPage: React.FC = () => {
     setStep('saving');
     const result = await saveDraftEntry(draft);
     if (result.kind === 'saved') {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setSavedCount((count) => count + 1);
       advanceQueue();
     } else if (result.kind === 'duplicate') {
@@ -294,7 +268,8 @@ const UploadPage: React.FC = () => {
   };
 
   const handleSkip = () => {
-    setNotSavedCount((count) => count + 1);
+    if (draft?.isDuplicate) setSkippedDuplicateCount((count) => count + 1);
+    else setNotSavedCount((count) => count + 1);
     advanceQueue();
   };
 
@@ -307,7 +282,7 @@ const UploadPage: React.FC = () => {
   return (
     <IonPage>
       <IonContent className="ion-padding" fullscreen>
-        <PageHeader title="สแกนสลิป" subtitle="ถ่ายรูปสลิปให้ AI อ่านข้อมูลและบันทึกอัตโนมัติ" />
+        <PageHeader title="สแกนสลิป" subtitle="ให้ AI อ่านข้อมูล แล้วตรวจสอบก่อนบันทึกทุกครั้ง" />
 
         {step === 'pick' && (
           <>
@@ -360,16 +335,6 @@ const UploadPage: React.FC = () => {
             <p style={{ marginTop: 8, color: 'var(--tl-text-secondary)' }}>
               กำลังอ่านข้อมูลจากสลิป…
               {extractProgress.total > 1 && ` (${Math.min(extractProgress.done + 1, extractProgress.total)}/${extractProgress.total})`}
-            </p>
-          </div>
-        )}
-
-        {step === 'saving' && !draft && (
-          <div className="tl-card" style={{ textAlign: 'center', padding: 32 }}>
-            <IonSpinner />
-            <p style={{ marginTop: 8, color: 'var(--tl-text-secondary)' }}>
-              กำลังบันทึกรายการ…
-              {saveProgress.total > 1 && ` (${Math.min(saveProgress.done + 1, saveProgress.total)}/${saveProgress.total})`}
             </p>
           </div>
         )}
@@ -531,7 +496,13 @@ const UploadPage: React.FC = () => {
                   minHeight: 50,
                 }}
               >
-                {step === 'saving' ? <IonSpinner name="dots" /> : isBatch && queueIndex < queue.length - 1 ? 'บันทึกแล้วไปต่อ' : 'บันทึกรายการ'}
+                {step === 'saving'
+                  ? <IonSpinner name="dots" />
+                  : draft.isDuplicate
+                    ? 'ยืนยันบันทึกรายการซ้ำ'
+                    : isBatch && queueIndex < queue.length - 1
+                      ? 'บันทึกแล้วไปต่อ'
+                      : 'บันทึกรายการ'}
               </IonButton>
               {isBatch && (
                 <IonButton

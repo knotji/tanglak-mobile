@@ -9,6 +9,7 @@ export interface SaveTransactionInput {
   categoryLabel?: string;
   paymentMethod?: string;
   note?: string;
+  source?: 'manual' | 'ai_extraction';
 }
 
 export async function saveTransaction(input: SaveTransactionInput): Promise<void> {

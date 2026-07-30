@@ -28,6 +28,7 @@ describe('Edge Function clients', () => {
       occurredAt: '2026-07-28T17:00:00.000Z',
       merchant: 'ร้านทดสอบ',
       categoryLabel: 'อาหาร',
+      source: 'manual',
     };
 
     it('passes the complete reviewed transaction to the write boundary', async () => {
