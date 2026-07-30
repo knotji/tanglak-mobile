@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { IonButton, IonIcon, IonSpinner } from '@ionic/react';
 import { fingerPrintOutline, lockClosedOutline, shieldCheckmarkOutline } from 'ionicons/icons';
 import { isBiometricLockEnabled, authenticateBiometrics } from '@/lib/biometrics';
@@ -11,6 +13,7 @@ export const BiometricLockGuard: React.FC<BiometricLockGuardProps> = ({ children
   const [isLocked, setIsLocked] = useState(() => isBiometricLockEnabled());
   const [authenticating, setAuthenticating] = useState(false);
   const [error, setError] = useState('');
+  const [isAppActive, setIsAppActive] = useState(true);
 
   const triggerUnlock = async () => {
     setError('');
@@ -30,10 +33,29 @@ export const BiometricLockGuard: React.FC<BiometricLockGuardProps> = ({ children
   };
 
   useEffect(() => {
-    if (isLocked) {
+    if (isLocked && isAppActive) {
       void triggerUnlock();
     }
-  }, [isLocked]);
+  }, [isLocked, isAppActive]);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let subscription: { remove: () => void } | null = null;
+    let cancelled = false;
+
+    void App.addListener('appStateChange', ({ isActive }) => {
+      setIsAppActive(isActive);
+      if (!isActive && isBiometricLockEnabled()) setIsLocked(true);
+    }).then((handle) => {
+      if (cancelled) handle.remove();
+      else subscription = handle;
+    });
+
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+  }, []);
 
   if (!isLocked) {
     return <>{children}</>;
