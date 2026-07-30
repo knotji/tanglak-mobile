@@ -32,6 +32,7 @@ import { listTransactionsForMonth } from '@/lib/transactions';
 import { currentBangkokMonth, shiftBangkokMonth } from '@/lib/bangkokDate';
 import { suggestBudgetFromHistory, suggestBudgetFromIncomeRatio, type BudgetSuggestion, type IncomeRatioSuggestion } from '@/lib/budgetSuggestion';
 import { requestAiBudgetPlan, summarizeBudgetHistory, type AiBudgetPlan } from '@/lib/aiBudget';
+import { applyBudgetPlan } from '@/lib/applyBudgetPlan';
 import { CATEGORY_OPTIONS, categoryLabel } from '@/lib/categories';
 import { formatTHB, bahtToSatang } from '@/lib/money';
 import PageHeader from '@/components/PageHeader';
@@ -240,18 +241,18 @@ const BudgetEditPage: React.FC = () => {
 
     setApplyingSuggestion(true);
     try {
-      for (const item of items) {
-        if (!selectedLabels.has(item.label)) continue;
-        const existing = categories.find((c) => c.label === item.label);
-        const amountBaht = String(item.suggestedSatang / 100);
-        if (existing) {
-          await updateBudgetCategoryAmount(existing.id, amountBaht);
-          setCategories((current) => current.map((c) => (c.id === existing.id ? { ...c, amountSatang: item.suggestedSatang } : c)));
-        } else {
-          const row = await addBudgetCategory(budgetId, item.label, amountBaht);
-          setCategories((current) => [...current, row]);
-        }
-      }
+      const nextCategories = await applyBudgetPlan({
+        budgetId,
+        categories,
+        items,
+        selectedLabels,
+        operations: {
+          update: updateBudgetCategoryAmount,
+          add: addBudgetCategory,
+          remove: deleteBudgetCategory,
+        },
+      });
+      setCategories(nextCategories);
       setSuggestionOpen(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'นำงบที่แนะนำไปใช้ไม่สำเร็จ');
